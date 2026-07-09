@@ -38,7 +38,14 @@ export default {
 
     try {
       if (url.pathname === '/gate/config' && request.method === 'GET') {
-        return ok({ turnstileSiteKey: env.TURNSTILE_SITE_KEY });
+        // debugScores/minTurnsBeforeJudge are echoed so a stale or broken KV
+        // manifest edit is diagnosable from a browser. Neither is sensitive.
+        const manifest = await loadManifest(env);
+        return ok({
+          turnstileSiteKey: env.TURNSTILE_SITE_KEY,
+          debugScores: manifest.debugScores === true,
+          minTurnsBeforeJudge: manifest.minTurnsBeforeJudge,
+        });
       }
       if (request.method !== 'POST') {
         return err('method_not_allowed', 'POST only.', 405);
