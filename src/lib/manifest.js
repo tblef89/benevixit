@@ -32,6 +32,13 @@ const DEFAULTS = {
 };
 
 export async function loadManifest(env) {
-  const stored = await env.GATE_KV.get('manifest', 'json');
+  // A hand-edited manifest with broken JSON must degrade to defaults,
+  // not take the gate down — the KV read throws on unparseable values.
+  let stored = null;
+  try {
+    stored = await env.GATE_KV.get('manifest', 'json');
+  } catch (e) {
+    console.error('manifest in KV is not valid JSON — using defaults', e);
+  }
   return { ...DEFAULTS, ...(stored || {}) };
 }

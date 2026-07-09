@@ -68,6 +68,10 @@
   await T.print('verifying you are a person...', 15);
 
   const cfg = await api('config');
+  if (!cfg.ok || !cfg.data?.turnstileSiteKey) {
+    await T.print('the gate is jammed. try again shortly.', 30);
+    return;
+  }
   const token = await getTurnstileToken(cfg.data.turnstileSiteKey);
   if (!token) {
     await T.print('verification failed. reload and try again.', 30);
