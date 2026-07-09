@@ -3,6 +3,12 @@
   "main": "src/index.js",
   "compatibility_date": "2026-06-01",
 
+  // Custom domains — Cloudflare creates the DNS records and certs on deploy.
+  "routes": [
+    { "pattern": "benevixit.com", "custom_domain": true },
+    { "pattern": "www.benevixit.com", "custom_domain": true }
+  ],
+
   // Static frontend served from ./public; /gate/* always hits the Worker first.
   "assets": {
     "directory": "./public",
