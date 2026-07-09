@@ -45,7 +45,7 @@
 
   "vars": {
     "GATEWAY_ID": "benevixit-gate",
-    "TURNSTILE_SITE_KEY": "REPLACE_WITH_TURNSTILE_SITE_KEY"
+    "TURNSTILE_SITE_KEY": "0x4AAAAAADyqZ5T9EIEi14YR"
   }
 
   // Secrets (set via `wrangler secret put <NAME>`, or .dev.vars locally):
