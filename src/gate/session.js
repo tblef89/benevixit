@@ -86,8 +86,13 @@ export class GateSession {
       if (verdict.teach && !teaching) await this.ctx.storage.put('teaching', true);
     }
 
+    // Tuning aid, off by default: set "debugScores": true in the KV manifest
+    // to surface the judge's scores to the terminal. Turn OFF before launch —
+    // visible scores teach visitors how to game the gate.
+    const debug = manifest.debugScores ? { scores } : {};
+
     if (!passed) {
-      return this.reply({ reply, passed: false, turnsLeft: manifest.maxTurns - turns - 1 });
+      return this.reply({ reply, passed: false, turnsLeft: manifest.maxTurns - turns - 1, ...debug });
     }
 
     const grant = await mintGrant(this.env.GRANT_SECRET, {
