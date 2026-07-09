@@ -54,6 +54,7 @@
 
   "vars": {
     "GATEWAY_ID": "benevixit-gate",
+    "SHOP_ORIGIN": "https://shop.benevixit.com",
     "TURNSTILE_SITE_KEY": "0x4AAAAAADyqZ5T9EIEi14YR"
   }
 

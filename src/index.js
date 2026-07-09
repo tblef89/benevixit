@@ -29,11 +29,27 @@ function clientIp(request) {
   return request.headers.get('CF-Connecting-IP') || '0.0.0.0';
 }
 
+// Same-origin shop: any path that isn't the gate or a static asset is
+// proxied to the WordPress origin, so the visitor never leaves benevixit.com.
+// WordPress is configured (WP_HOME/WP_SITEURL) to believe it IS benevixit.com.
+async function proxyToShop(request, env) {
+  const url = new URL(request.url);
+  url.hostname = new URL(env.SHOP_ORIGIN).hostname;
+  return fetch(new Request(url, request), { redirect: 'manual' });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/gate/')) {
-      return env.ASSETS.fetch(request);
+      // Terminal frontend first; anything it doesn't have is the shop.
+      // Assets only answer GET/HEAD — POSTs (login, cart, webhooks) go
+      // straight to WordPress.
+      if (request.method === 'GET' || request.method === 'HEAD') {
+        const asset = await env.ASSETS.fetch(request);
+        if (asset.status !== 404) return asset;
+      }
+      return proxyToShop(request, env);
     }
 
     try {

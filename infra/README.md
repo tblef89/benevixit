@@ -3,6 +3,13 @@
 Prereqs: Phase 1 runbook complete (`docs/mothball-runbook.md`), CipherPay
 merchant credentials in your password manager, `GRANT_SECRET` value at hand.
 
+**Same-origin architecture:** visitors never see `shop.benevixit.com`. The
+benevixit.com Worker serves the terminal and gate itself and proxies every
+other path (product, cart, checkout, wp-admin) to this WordPress origin.
+`WP_HOME`/`WP_SITEURL` are pinned to `https://benevixit.com` in the compose
+file, so all WordPress-generated URLs stay on the main domain. The `shop`
+DNS record is internal plumbing — the address the Worker fetches from.
+
 ## 1. Stack up
 
 ```bash
@@ -22,15 +29,17 @@ verification is live as soon as WordPress boots, and updates ship via
 
 1. Cloudflare DNS: `A` record `shop` → VPS IP, **grey cloud** (proxy off) for now.
 2. Wait for `https://shop.benevixit.com` to answer with a Caddy-issued cert.
-3. Flip the record to **orange cloud** (proxied) and set the zone's SSL mode
-   to **Full (strict)**.
+3. Leave the record **grey cloud** — the Worker fetches this hostname
+   directly as its origin; Caddy's Let's Encrypt cert secures the hop.
 4. Optional hardening: firewall the VPS so ports 80/443 only accept
    [Cloudflare IP ranges](https://www.cloudflare.com/ips/), plus your SSH.
+   (Worker `fetch()` egress comes from Cloudflare IPs, so this still works.)
 
 ## 3. WordPress + WooCommerce
 
-1. Visit `https://shop.benevixit.com` → WordPress install wizard. Site title
-   "bene vixit", strong admin password, discourage search engines: **on**.
+1. Visit the WordPress install wizard. Site title "bene vixit", strong admin
+   password, discourage search engines: **on**. Once `WP_HOME` is active,
+   wp-admin lives at `https://benevixit.com/wp-admin`.
 2. Install WooCommerce; run its setup (store address, currency — see pricing
    note below, no marketing extras).
 3. Install the **CipherPay plugin**; enter the API key and webhook secret from
@@ -53,7 +62,7 @@ verification is live as soon as WordPress boots, and updates ship via
 Update the KV manifest (`GATE_KV` → `manifest`):
 
 ```json
-"checkoutUrl": "https://shop.benevixit.com/product/herringbone-cap"
+"checkoutUrl": "https://benevixit.com/product/herringbone-cap"
 ```
 
 ## 6. The full rehearsal
