@@ -76,16 +76,21 @@ export class GateSession {
       : Promise.resolve(null);
     const [res, scores] = await Promise.all([chatPromise, judgePromise]);
 
-    const reply = (res.response ?? '...').trim();
-    transcript.push({ role: 'assistant', content: reply });
-    await this.ctx.storage.put('transcript', transcript);
-
     let passed = false;
     if (scores) {
       const verdict = decideVerdict(scores, manifest);
       passed = verdict.pass;
       if (verdict.teach && !teaching) await this.ctx.storage.put('teaching', true);
     }
+
+    // On the passing turn, the chat model's conversational reply (it doesn't
+    // know the verdict and would keep probing) is discarded for the Keeper's
+    // scripted admission line. No latency cost — both calls already ran.
+    const reply = passed
+      ? manifest.passLine
+      : (res.response ?? '...').trim();
+    transcript.push({ role: 'assistant', content: reply });
+    await this.ctx.storage.put('transcript', transcript);
 
     // Tuning aid, off by default: set "debugScores": true in the KV manifest
     // to surface the judge's behavior to the terminal. Always reports something
