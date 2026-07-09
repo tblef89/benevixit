@@ -1,0 +1,54 @@
+{
+  "name": "benevixit",
+  "main": "src/index.js",
+  "compatibility_date": "2026-06-01",
+
+  // Static frontend served from ./public; /gate/* always hits the Worker first.
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/gate/*"]
+  },
+
+  // Workers AI — all calls routed through the AI Gateway (see GATEWAY_ID below).
+  "ai": { "binding": "AI" },
+
+  // Low-churn config only: gate manifest, current passphrase.
+  // Mutable counters live in rate limiters and the GateSession DO, never KV.
+  "kv_namespaces": [
+    { "binding": "GATE_KV", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }
+  ],
+
+  // One Durable Object per gate conversation: transcript, turn count, verdicts.
+  "durable_objects": {
+    "bindings": [{ "name": "GATE_SESSION", "class_name": "GateSession" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GateSession"] }],
+
+  // Per-IP rate limits. KV can't do this (eventually consistent, 1 write/sec/key).
+  "unsafe": {
+    "bindings": [
+      {
+        "name": "SESSION_RL",
+        "type": "ratelimit",
+        "namespace_id": "1001",
+        "simple": { "limit": 5, "period": 60 }
+      },
+      {
+        "name": "MESSAGE_RL",
+        "type": "ratelimit",
+        "namespace_id": "1002",
+        "simple": { "limit": 30, "period": 60 }
+      }
+    ]
+  },
+
+  "vars": {
+    "GATEWAY_ID": "benevixit-gate",
+    "TURNSTILE_SITE_KEY": "REPLACE_WITH_TURNSTILE_SITE_KEY"
+  }
+
+  // Secrets (set via `wrangler secret put <NAME>`, or .dev.vars locally):
+  //   GRANT_SECRET     — HMAC key for access grants (shared with the WP mu-plugin)
+  //   TURNSTILE_SECRET — Turnstile siteverify secret
+}

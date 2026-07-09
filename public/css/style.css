@@ -1,0 +1,65 @@
+/* bene vixit — paper terminal.
+   privacy = light: warm paper, dark ink. not another green-on-black cave. */
+
+:root {
+  --paper: #faf7f0;
+  --ink: #23201a;
+  --ink-soft: #6b6459;
+  --accent: #8a6d1f; /* old gold */
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+#terminal {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 6rem;
+  min-height: 100%;
+  overflow-y: auto;
+}
+
+.line { white-space: pre-wrap; word-break: break-word; min-height: 1.6em; }
+.line.keeper { color: var(--ink); }
+.line.visitor { color: var(--ink-soft); }
+.line.system { color: var(--accent); font-style: italic; }
+
+.copyable { cursor: pointer; text-decoration: underline dotted var(--accent); }
+.copyable.copied { color: var(--accent); }
+
+#input-line { white-space: pre-wrap; word-break: break-word; }
+.cursor { animation: blink 1.1s steps(1) infinite; color: var(--accent); }
+@keyframes blink { 50% { opacity: 0; } }
+
+#hidden-input {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  opacity: 0;
+}
+
+#turnstile-slot {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+}
+
+a { color: var(--accent); }
+
+@media (prefers-color-scheme: dark) {
+  /* Even the dark theme stays warm — dusk, not a basement. */
+  :root {
+    --paper: #201d17;
+    --ink: #ece6da;
+    --ink-soft: #a89f8f;
+    --accent: #d4af37;
+  }
+}
