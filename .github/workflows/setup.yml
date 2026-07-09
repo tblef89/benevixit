@@ -1,0 +1,52 @@
+name: Setup
+
+# One-time / occasional setup tasks, run manually from the Actions tab.
+# Uses the same CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID repo secrets as deploys.
+#
+# Order of operations:
+#   1. create-kv       → copy the namespace ID from the log into wrangler.jsonc
+#   2. (merge; deploy goes green)
+#   3. seed-manifest   → loads manifest.example.json into KV (edit it first!)
+#   4. sync-secrets    → pushes GRANT_SECRET + TURNSTILE_SECRET repo secrets to the
+#                        Worker (requires the Worker to be deployed, i.e. after step 2)
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: Setup task to run
+        required: true
+        type: choice
+        options:
+          - create-kv
+          - seed-manifest
+          - sync-secrets
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create KV namespace (ID appears in this log)
+        if: inputs.task == 'create-kv'
+        run: npx wrangler@4 kv namespace create GATE_KV
+
+      - name: Seed gate manifest into KV
+        if: inputs.task == 'seed-manifest'
+        run: npx wrangler@4 kv key put manifest --path manifest.example.json --binding GATE_KV --remote
+
+      - name: Push Worker secrets
+        if: inputs.task == 'sync-secrets'
+        env:
+          GRANT_SECRET: ${{ secrets.GRANT_SECRET }}
+          TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
+        run: |
+          [ -n "$GRANT_SECRET" ] || { echo "GRANT_SECRET repo secret is not set"; exit 1; }
+          [ -n "$TURNSTILE_SECRET" ] || { echo "TURNSTILE_SECRET repo secret is not set"; exit 1; }
+          printf '%s' "$GRANT_SECRET" | npx wrangler@4 secret put GRANT_SECRET
+          printf '%s' "$TURNSTILE_SECRET" | npx wrangler@4 secret put TURNSTILE_SECRET
