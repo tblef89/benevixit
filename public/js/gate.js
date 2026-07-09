@@ -7,12 +7,17 @@
   const T = Terminal;
 
   async function api(path, body) {
-    const res = await fetch(`/gate/${path}`, {
-      method: body ? 'POST' : 'GET',
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    return res.json();
+    // Never throw: an error mid-conversation must not kill the chat loop.
+    try {
+      const res = await fetch(`/gate/${path}`, {
+        method: body ? 'POST' : 'GET',
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      return await res.json();
+    } catch (e) {
+      return { ok: false, error: { code: 'network', message: 'the line went quiet. say that again.' } };
+    }
   }
 
   function getTurnstileToken(siteKey) {
