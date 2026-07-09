@@ -54,7 +54,9 @@ export class GateSession {
       ? `${manifest.persona}\n\n${manifest.teachAddendum}`
       : manifest.persona;
 
-    const res = await this.env.AI.run(
+    // Chat and judge run in parallel: the judge scores the VISITOR's words,
+    // so it doesn't need the Keeper's new reply. Halves judged-turn latency.
+    const chatPromise = this.env.AI.run(
       manifest.chatModel,
       {
         messages: [{ role: 'system', content: system }, ...transcript],
@@ -62,23 +64,26 @@ export class GateSession {
       },
       { gateway: { id: this.env.GATEWAY_ID } },
     );
+    // Judge from minTurnsBeforeJudge onward. The verdict is decided in code;
+    // nothing the chat model says can grant access. Judge trouble must not
+    // eat the Keeper's reply: fail closed to no-pass.
+    const judgePromise = turns + 1 >= manifest.minTurnsBeforeJudge
+      ? judgeTranscript(this.env, manifest, transcript).catch((e) => {
+          console.error('judge failed', e);
+          return null;
+        })
+      : Promise.resolve(null);
+    const [res, scores] = await Promise.all([chatPromise, judgePromise]);
+
     const reply = (res.response ?? '...').trim();
     transcript.push({ role: 'assistant', content: reply });
     await this.ctx.storage.put('transcript', transcript);
 
-    // Judge from minTurnsBeforeJudge onward. The verdict is decided in code;
-    // nothing the chat model says can grant access.
     let passed = false;
-    if (turns + 1 >= manifest.minTurnsBeforeJudge) {
-      try {
-        const scores = await judgeTranscript(this.env, manifest, transcript);
-        const verdict = decideVerdict(scores, manifest);
-        passed = verdict.pass;
-        if (verdict.teach && !teaching) await this.ctx.storage.put('teaching', true);
-      } catch (e) {
-        // Judge trouble must not eat the Keeper's reply. Fail closed: no pass.
-        console.error('judge failed', e);
-      }
+    if (scores) {
+      const verdict = decideVerdict(scores, manifest);
+      passed = verdict.pass;
+      if (verdict.teach && !teaching) await this.ctx.storage.put('teaching', true);
     }
 
     if (!passed) {

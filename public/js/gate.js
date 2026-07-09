@@ -87,6 +87,29 @@
   T.printInstant("(if you already know the word: /word <phrase>)");
   T.addLine('');
 
+  // Silence looks like death in a terminal — show a pulse while models run.
+  function thinking() {
+    const div = document.createElement('div');
+    div.className = 'line system';
+    document.getElementById('output').appendChild(div);
+    let n = 0;
+    const iv = setInterval(() => {
+      n = (n % 3) + 1;
+      div.textContent = 'the keeper considers' + '.'.repeat(n);
+      T.scrollBottom();
+    }, 350);
+    return () => { clearInterval(iv); div.remove(); };
+  }
+
+  async function apiWithPulse(path, body) {
+    const done = thinking();
+    try {
+      return await api(path, body);
+    } finally {
+      done();
+    }
+  }
+
   // ── Conversation loop ──
   while (true) {
     const input = await T.prompt('> ');
@@ -94,7 +117,7 @@
 
     let result;
     if (input.startsWith('/word ')) {
-      result = await api('passphrase', { phrase: input.slice(6) });
+      result = await apiWithPulse('passphrase', { phrase: input.slice(6) });
       if (!result.ok) {
         await T.print(result.error.message, 35);
         continue;
@@ -102,7 +125,7 @@
       return grantReceived(result.data);
     }
 
-    result = await api('message', { sessionId, message: input });
+    result = await apiWithPulse('message', { sessionId, message: input });
     if (!result.ok) {
       await T.print(result.error.message, 35);
       if (result.error.code === 'rate_limited') await T.pause(2000);
