@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bene vixit</title>
+  <meta name="description" content="bene vixit, bene qui latuit — he lives well who conceals himself well.">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+</head>
+<body>
+  <main id="terminal" aria-live="polite">
+    <div id="output"></div>
+    <div id="input-line" style="display:none">
+      <span id="input-prefix"></span><span id="input-text"></span><span class="cursor">▌</span>
+    </div>
+  </main>
+  <input id="hidden-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="terminal input">
+  <div id="turnstile-slot"></div>
+
+  <script src="/js/terminal.js"></script>
+  <script src="/js/gate.js"></script>
+</body>
+</html>
