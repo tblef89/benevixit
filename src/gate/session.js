@@ -67,7 +67,8 @@ export class GateSession {
     // Judge from minTurnsBeforeJudge onward. The verdict is decided in code;
     // nothing the chat model says can grant access. Judge trouble must not
     // eat the Keeper's reply: fail closed to no-pass.
-    const judgePromise = turns + 1 >= manifest.minTurnsBeforeJudge
+    const judged = turns + 1 >= manifest.minTurnsBeforeJudge;
+    const judgePromise = judged
       ? judgeTranscript(this.env, manifest, transcript).catch((e) => {
           console.error('judge failed', e);
           return null;
@@ -87,9 +88,13 @@ export class GateSession {
     }
 
     // Tuning aid, off by default: set "debugScores": true in the KV manifest
-    // to surface the judge's scores to the terminal. Turn OFF before launch —
-    // visible scores teach visitors how to game the gate.
-    const debug = manifest.debugScores ? { scores } : {};
+    // to surface the judge's behavior to the terminal. Always reports something
+    // on judged turns — scores, or an explicit failure — plus the thresholds in
+    // force, so a stale/broken manifest edit is visible too. Turn OFF before
+    // launch: visible scores teach visitors how to game the gate.
+    const debug = manifest.debugScores
+      ? { debug: { judged, scores, thresholds: manifest.passThreshold } }
+      : {};
 
     if (!passed) {
       return this.reply({ reply, passed: false, turnsLeft: manifest.maxTurns - turns - 1, ...debug });

@@ -133,9 +133,16 @@
     }
 
     await T.print(result.data.reply, 15);
-    if (result.data.scores) {
-      const s = result.data.scores;
-      T.printInstant(`[judge] sincerity ${s.sincerity} · knowledge ${s.knowledge} · values ${s.values} — ${s.notes}`);
+    if (result.data.debug) {
+      const d = result.data.debug;
+      const t = d.thresholds;
+      if (!d.judged) {
+        T.printInstant('[judge] not judging yet (before minTurnsBeforeJudge)');
+      } else if (d.scores) {
+        T.printInstant(`[judge] sincerity ${d.scores.sincerity} · knowledge ${d.scores.knowledge} · values ${d.scores.values} (need ${t.sincerity}/${t.knowledge}/${t.values}) — ${d.scores.notes}`);
+      } else {
+        T.printInstant('[judge] NO VERDICT — judge call failed or output unparseable. check Workers Logs.');
+      }
     }
     T.addLine('');
 
