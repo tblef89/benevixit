@@ -6,9 +6,21 @@
     "holdMs": 300
   },
   "scenes": [
-    { "match": "^/$", "art": "/art/key.svg" },
-    { "match": "^/product/", "art": "/art/wordmark.svg" },
-    { "match": "^/cart", "art": "/art/key.svg" },
-    { "match": "^/checkout", "art": "/art/key.svg" }
+    {
+      "match": "^/$",
+      "art": "/art/key.svg"
+    },
+    {
+      "match": "^/product/",
+      "art": "/art/key.svg"
+    },
+    {
+      "match": "^/cart",
+      "art": "/art/key.svg"
+    },
+    {
+      "match": "^/checkout",
+      "art": "/art/key.svg"
+    }
   ]
 }

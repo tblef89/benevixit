@@ -8,6 +8,7 @@
 <?php wp_head(); ?>
 </head>
 <body <?php body_class(); ?>>
+<div class="bv-watermark" aria-hidden="true"></div>
 <header class="bv-header">
   <a class="bv-brand" href="<?php echo esc_url(home_url('/')); ?>"><?php bloginfo('name'); ?></a>
   <p class="bv-motto"><?php bloginfo('description'); ?></p>

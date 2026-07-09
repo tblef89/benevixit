@@ -1,16 +1,18 @@
 /**
- * dissolve.js — masked navigation with dither dissolves and particle scenes.
+ * dissolve.js — the watermark travels between pages.
  *
- * Departure: the page dissolves to paper (ordered Bayer dither) and the real
- * navigation happens underneath. Arrival: if scenes.json maps this path to an
- * SVG, ink particles fly in and draw its outlines over the paper while the
- * page loads behind the cover; the formed art then breaks apart cell by cell
- * as the dither clears to reveal the page. No scene (or any failure at all)
- * falls back to the plain dither. One room, redressing itself.
+ * Every page carries its scene's SVG as a fixed background watermark
+ * (.bv-watermark). On departure, that watermark ignites into ink particles
+ * and scatters while the page dissolves to paper (ordered Bayer dither).
+ * On arrival, particles fly back in, redraw the next scene's watermark in
+ * exactly the position and size the real element occupies, settle to its
+ * resting opacity, and crossfade into it as the page dithers in. The art
+ * never disappears; it travels.
  *
- * Art is content: drop SVGs in /art/ and map them in /art/scenes.json.
- * Progressive enhancement only — no JS, old browsers, or reduced motion get
- * plain navigation.
+ * Scenes are content: SVGs in /art/, routes in /art/scenes.json. Any failure
+ * (missing art, bad regex, malformed SVG) falls back to the plain dither —
+ * broken art can never break navigation. Reduced motion and no-JS get plain
+ * navigation.
  */
 (function () {
   'use strict';
@@ -26,6 +28,14 @@
   }
   function paper() { return cssVar('--paper', '#faf7f0'); }
   function ink() { return cssVar('--ink', '#23201a'); }
+  // Geometry the particles must land on — kept in CSS custom properties so
+  // the watermark rule and this script can never disagree.
+  function watermarkGeom() {
+    return {
+      heightFrac: (parseFloat(cssVar('--wm-height', '72')) || 72) / 100,
+      restOpacity: parseFloat(cssVar('--wm-opacity', '0.07')) || 0.07,
+    };
+  }
 
   var BAYER = [
     [0, 32, 8, 40, 2, 34, 10, 42],
@@ -38,19 +48,19 @@
     [63, 31, 55, 23, 61, 29, 53, 21],
   ];
 
-  function makeCanvas() {
+  function makeCanvas(z) {
     var c = document.createElement('canvas');
     c.width = innerWidth;
     c.height = innerHeight;
     c.setAttribute('data-bv-cover', '');
     c.style.cssText =
-      'position:fixed;inset:0;z-index:2147483000;pointer-events:none;width:100vw;height:100vh;';
+      'position:fixed;inset:0;z-index:' + z + ';pointer-events:none;width:100vw;height:100vh;';
     document.documentElement.appendChild(c);
     return c;
   }
+  var Z_COVER = 2147483000;
+  var Z_ART = 2147483001;
 
-  // Incremental dither on an existing canvas: paints (out) or clears (in)
-  // only the cells whose Bayer threshold enters this frame's window.
   function dither(canvas, direction, done) {
     var ctx = canvas.getContext('2d');
     var cols = Math.ceil(canvas.width / CELL);
@@ -100,8 +110,12 @@
     return null;
   }
 
-  // Sample points along an SVG's outlines, normalized to centered unit space.
+  // Sample outline points; returns { pts (centered, normalized by height),
+  // aspect } so the drawn art can be sized to the watermark's height rule.
+  var artCache = {};
   function sampleArt(url, count) {
+    var cacheKey = url + '|' + count;
+    if (artCache[cacheKey]) return Promise.resolve(artCache[cacheKey]);
     return fetch(url)
       .then(function (r) {
         if (!r.ok) throw new Error('art ' + r.status);
@@ -132,21 +146,20 @@
           });
           var total = lens.reduce(function (a, b) { return a + b; }, 0);
           if (!total) throw new Error('no geometry');
-          var scale = 1 / Math.max(w, h);
           var pts = [];
           geos.forEach(function (g, i) {
             if (!lens[i]) return;
             var n = Math.max(2, Math.round(count * (lens[i] / total)));
             for (var k = 0; k < n; k++) {
               var p = g.getPointAtLength((lens[i] * k) / n);
-              pts.push({
-                x: (p.x - minX - w / 2) * scale,
-                y: (p.y - minY - h / 2) * scale,
-              });
+              // Normalize by HEIGHT: y spans [-0.5, 0.5], x keeps aspect.
+              pts.push({ x: (p.x - minX - w / 2) / h, y: (p.y - minY - h / 2) / h });
             }
           });
           if (!pts.length) throw new Error('no points');
-          return pts;
+          var result = { pts: pts, aspect: w / h };
+          artCache[cacheKey] = result;
+          return result;
         } finally {
           host.remove();
         }
@@ -157,55 +170,107 @@
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
-  // Particles converge from scattered positions to the art's outline points
-  // on a paper-filled canvas, hold, then hand back for the dither reveal.
-  function formArt(canvas, pts, scene, done) {
-    var ctx = canvas.getContext('2d');
-    var W = canvas.width, H = canvas.height;
-    var size = Math.min(W, H) * (scene.scale || 0.5);
-    var cx = W / 2, cy = H / 2;
-    var inkColor = ink();
-    var particles = pts.map(function (p) {
+  function buildParticles(art, canvas) {
+    var geom = watermarkGeom();
+    var size = canvas.height * geom.heightFrac; // art height in px (mask: auto <height>)
+    var cx = canvas.width / 2, cy = canvas.height / 2;
+    return art.pts.map(function (p) {
       var angle = Math.random() * Math.PI * 2;
-      var dist = Math.max(W, H) * (0.5 + Math.random() * 0.4);
+      var dist = Math.max(canvas.width, canvas.height) * (0.5 + Math.random() * 0.4);
       return {
-        tx: cx + p.x * size,
-        ty: cy + p.y * size,
-        sx: cx + Math.cos(angle) * dist,
-        sy: cy + Math.sin(angle) * dist,
+        hx: cx + p.x * size, // home: exactly where the watermark renders
+        hy: cy + p.y * size,
+        fx: cx + Math.cos(angle) * dist, // far: scattered off-screen
+        fy: cy + Math.sin(angle) * dist,
         delay: Math.random() * 0.25,
       };
     });
-    var formMs = scene.formMs || 750;
+  }
+
+  // direction 'form': far → home, then settle from travelOpacity to rest.
+  // direction 'scatter': home → far, igniting from rest to travelOpacity.
+  function animateParticles(canvas, particles, direction, scene, done) {
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height;
+    var inkColor = ink();
+    var rest = watermarkGeom().restOpacity;
+    var travel = 0.85;
+    var ms = direction === 'form' ? (scene.formMs || 750) : (scene.scatterMs || 450);
     var start = performance.now();
     function frame(now) {
-      var t = Math.min(1, (now - start) / formMs);
-      ctx.fillStyle = paper();
-      ctx.fillRect(0, 0, W, H);
+      var t = Math.min(1, (now - start) / ms);
+      ctx.clearRect(0, 0, W, H);
       ctx.fillStyle = inkColor;
+      ctx.globalAlpha = direction === 'form'
+        ? travel
+        : rest + (travel - rest) * Math.min(1, t * 3); // ignite quickly
       for (var i = 0; i < particles.length; i++) {
         var p = particles[i];
         var e = easeInOutCubic(Math.min(1, Math.max(0, (t - p.delay) / (1 - p.delay))));
-        var x = p.sx + (p.tx - p.sx) * e;
-        var y = p.sy + (p.ty - p.sy) * e;
+        var x, y;
+        if (direction === 'form') {
+          x = p.fx + (p.hx - p.fx) * e;
+          y = p.fy + (p.hy - p.fy) * e;
+        } else {
+          x = p.hx + (p.fx - p.hx) * e;
+          y = p.hy + (p.fy - p.hy) * e;
+        }
         ctx.fillRect(x, y, 2, 2);
       }
+      ctx.globalAlpha = 1;
       if (t < 1) requestAnimationFrame(frame);
-      else setTimeout(done, scene.holdMs || 300);
+      else if (direction === 'form') settle();
+      else done();
+    }
+    // After forming at travel opacity, ease down to the watermark's resting
+    // opacity so the crossfade to the real element is invisible.
+    function settle() {
+      var s = performance.now();
+      var settleMs = 250;
+      function sframe(now) {
+        var t = Math.min(1, (now - s) / settleMs);
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = inkColor;
+        ctx.globalAlpha = travel + (rest - travel) * t;
+        for (var i = 0; i < particles.length; i++) {
+          ctx.fillRect(particles[i].hx, particles[i].hy, 2, 2);
+        }
+        ctx.globalAlpha = 1;
+        if (t < 1) requestAnimationFrame(sframe);
+        else done();
+      }
+      requestAnimationFrame(sframe);
     }
     requestAnimationFrame(frame);
   }
 
+  // ── Departure: watermark scatters while the page dithers to paper ──
   function maskedNavigate(go) {
     if (reduced) return go();
-    var canvas = makeCanvas();
-    dither(canvas, 'out', function () {
-      try { sessionStorage.setItem(KEY, String(Date.now())); } catch (e) {}
-      go();
+    var pending = 1;
+    var finish = function () {
+      if (--pending === 0) {
+        try { sessionStorage.setItem(KEY, String(Date.now())); } catch (e) {}
+        go();
+      }
+    };
+    var cover = makeCanvas(Z_COVER);
+    // Scatter the current page's watermark, if it has one.
+    loadScenes().then(function (cfg) {
+      var scene = sceneFor(location.pathname, cfg);
+      if (!scene || !scene.art) return;
+      pending++;
+      sampleArt(scene.art, scene.particles || 1400)
+        .then(function (art) {
+          var artCanvas = makeCanvas(Z_ART);
+          animateParticles(artCanvas, buildParticles(art, artCanvas), 'scatter', scene, finish);
+        })
+        .catch(finish);
     });
+    dither(cover, 'out', finish);
   }
 
-  // ── Arrival ──
+  // ── Arrival: particles rebuild the watermark, page dithers in beneath ──
   function arriving() {
     var stamp = null;
     try {
@@ -218,23 +283,39 @@
       return;
     }
 
-    var canvas = makeCanvas();
-    var ctx = canvas.getContext('2d');
+    var cover = makeCanvas(Z_COVER);
+    var ctx = cover.getContext('2d');
     ctx.fillStyle = paper();
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, cover.width, cover.height);
     document.documentElement.classList.remove('bv-covered');
 
-    var reveal = function () { dither(canvas, 'in', function () { canvas.remove(); }); };
+    var cleanup = function (artCanvas) {
+      // Page (with its real watermark) dithers in; the particle copy fades
+      // out in step, crossfading into the genuine element.
+      if (artCanvas) {
+        artCanvas.style.transition = 'opacity ' + DITHER_MS + 'ms linear';
+        artCanvas.style.opacity = '0';
+      }
+      dither(cover, 'in', function () {
+        cover.remove();
+        if (artCanvas) artCanvas.remove();
+      });
+    };
 
     loadScenes()
       .then(function (cfg) {
         var scene = sceneFor(location.pathname, cfg);
-        if (!scene || !scene.art) return reveal();
+        if (!scene || !scene.art) return cleanup(null);
         return sampleArt(scene.art, scene.particles || 1400)
-          .then(function (pts) { formArt(canvas, pts, scene, reveal); })
-          .catch(reveal);
+          .then(function (art) {
+            var artCanvas = makeCanvas(Z_ART);
+            animateParticles(artCanvas, buildParticles(art, artCanvas), 'form', scene, function () {
+              setTimeout(function () { cleanup(artCanvas); }, scene.holdMs || 150);
+            });
+          })
+          .catch(function () { cleanup(null); });
       })
-      .catch(reveal);
+      .catch(function () { cleanup(null); });
   }
 
   // ── Interception ──
@@ -278,9 +359,26 @@
     }
   });
 
+  // Keep the persistent watermark in sync with scenes.json, so per-page art
+  // changes are registry edits — the CSS default (key.svg) is just a fallback.
+  function syncWatermark() {
+    loadScenes().then(function (cfg) {
+      var scene = sceneFor(location.pathname, cfg);
+      var el = document.querySelector('.bv-watermark');
+      if (el && scene && scene.art) {
+        el.style.webkitMaskImage = 'url(' + scene.art + ')';
+        el.style.maskImage = 'url(' + scene.art + ')';
+      }
+    });
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', arriving);
+    document.addEventListener('DOMContentLoaded', function () {
+      syncWatermark();
+      arriving();
+    });
   } else {
+    syncWatermark();
     arriving();
   }
 })();
