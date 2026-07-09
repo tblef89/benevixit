@@ -27,7 +27,10 @@ export async function judgeTranscript(env, manifest, transcript) {
 
 function parseScores(text) {
   const match = text.match(/\{[\s\S]*\}/);
-  if (!match) return null; // fail closed
+  if (!match) {
+    console.error('judge output had no JSON:', String(text).slice(0, 300));
+    return null; // fail closed
+  }
   try {
     const raw = JSON.parse(match[0]);
     const clamp = (n) => (Number.isFinite(+n) ? Math.max(0, Math.min(10, +n)) : 0);
@@ -38,6 +41,7 @@ function parseScores(text) {
       notes: typeof raw.notes === 'string' ? raw.notes.slice(0, 300) : '',
     };
   } catch {
+    console.error('judge JSON did not parse:', match[0].slice(0, 300));
     return null; // fail closed
   }
 }
