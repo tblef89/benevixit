@@ -13,6 +13,8 @@ add_action('after_setup_theme', function () {
 
 add_action('wp_enqueue_scripts', function () {
     wp_enqueue_style('benevixit', get_stylesheet_uri(), [], wp_get_theme()->get('Version'));
+    // Masked-navigation dissolve, served same-origin by the Worker.
+    wp_enqueue_script('bv-dissolve', '/js/dissolve.js', [], null, ['strategy' => 'defer', 'in_footer' => false]);
 });
 
 // Strip the product page to essentials: no tabs, no related/upsells, no
