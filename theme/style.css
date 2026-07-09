@@ -1,0 +1,208 @@
+/*
+Theme Name: Bene Vixit
+Description: Paper-terminal storefront for Private Key / bene vixit. Product, cart, checkout — nothing else.
+Version: 1.0
+Author: bene vixit
+Text Domain: benevixit
+*/
+
+:root {
+  --paper: #faf7f0;
+  --ink: #23201a;
+  --ink-soft: #6b6459;
+  --accent: #8a6d1f;
+  --line: #e5dfd2;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+a { color: var(--accent); }
+
+/* ── Header: the brand line, nothing else ── */
+.bv-header {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 1rem;
+}
+.bv-brand {
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  color: var(--ink);
+  text-decoration: none;
+}
+.bv-brand:hover { color: var(--accent); }
+.bv-motto {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  text-transform: lowercase;
+  margin-top: 0.15rem;
+}
+
+.bv-main {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 7rem;
+}
+
+/* ── Kill Woo's default chrome ── */
+.woocommerce-breadcrumb,
+.woocommerce-products-header,
+.product_meta,
+.woocommerce-tabs { display: none !important; }
+
+/* ── Product page ── */
+.woocommerce div.product {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: start;
+}
+.woocommerce div.product div.images { width: 100% !important; float: none !important; }
+.woocommerce div.product div.summary { width: 100% !important; float: none !important; }
+.bv-description { grid-column: 1 / -1; color: var(--ink-soft); max-width: 40rem; }
+
+@media (max-width: 700px) {
+  .woocommerce div.product { grid-template-columns: 1fr; gap: 1.5rem; }
+}
+
+.woocommerce div.product img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid var(--line);
+}
+
+.woocommerce div.product .product_title {
+  font-size: 1.4rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  margin-bottom: 0.5rem;
+}
+
+.woocommerce div.product p.price {
+  font-size: 1.05rem;
+  color: var(--ink);
+  margin-bottom: 1rem;
+}
+
+.woocommerce div.product .woocommerce-product-details__short-description {
+  color: var(--ink-soft);
+  margin-bottom: 1.5rem;
+}
+
+/* ── Buttons: ink on paper ── */
+.woocommerce button.button,
+.woocommerce a.button,
+.woocommerce input.button,
+.woocommerce #respond input#submit,
+.woocommerce button.button.alt,
+.woocommerce a.button.alt,
+#place_order {
+  background: var(--ink) !important;
+  color: var(--paper) !important;
+  border: 1px solid var(--ink) !important;
+  border-radius: 0 !important;
+  font-family: inherit !important;
+  font-size: 0.9rem !important;
+  text-transform: lowercase;
+  letter-spacing: 0.06em;
+  padding: 0.7rem 1.4rem !important;
+  cursor: pointer;
+}
+.woocommerce button.button:hover,
+.woocommerce a.button:hover,
+#place_order:hover {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+/* ── Inputs ── */
+.woocommerce .quantity .qty,
+.woocommerce input.input-text,
+.woocommerce textarea.input-text,
+.woocommerce select,
+.select2-container--default .select2-selection--single {
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  font-family: inherit;
+  padding: 0.6rem !important;
+}
+.woocommerce .quantity .qty { width: 4.5rem; text-align: center; }
+.woocommerce form .form-row label { color: var(--ink-soft); font-size: 0.8rem; text-transform: lowercase; }
+
+/* ── Cart + checkout tables ── */
+.woocommerce table.shop_table {
+  border: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  border-collapse: collapse;
+}
+.woocommerce table.shop_table th,
+.woocommerce table.shop_table td {
+  border-color: var(--line) !important;
+  font-family: inherit;
+}
+.woocommerce table.shop_table th {
+  color: var(--ink-soft);
+  text-transform: lowercase;
+  font-weight: 400;
+}
+
+/* ── Notices ── */
+.woocommerce-message,
+.woocommerce-info,
+.woocommerce-error {
+  background: transparent !important;
+  border: 1px solid var(--line) !important;
+  border-top: 2px solid var(--accent) !important;
+  color: var(--ink) !important;
+  font-family: inherit;
+}
+.woocommerce-message::before,
+.woocommerce-info::before { color: var(--accent) !important; }
+
+/* ── Checkout headings ── */
+.woocommerce h2, .woocommerce h3, .woocommerce-billing-fields h3, #order_review_heading {
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: var(--ink);
+  margin: 1.5rem 0 0.75rem;
+}
+
+/* ── Ghost footer (matches the terminal) ── */
+#site-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 10px 20px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  opacity: 0.25;
+  transition: opacity 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: var(--paper);
+}
+#site-footer:hover { opacity: 0.7; }
+#site-footer nav { display: flex; gap: 16px; justify-content: center; }
+#site-footer nav a { color: var(--ink); text-decoration: none; }
+#site-footer nav a:hover { text-decoration: underline; }
+#site-footer p { margin-top: 2px; }
