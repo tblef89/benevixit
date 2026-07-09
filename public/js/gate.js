@@ -133,6 +133,10 @@
     }
 
     await T.print(result.data.reply, 15);
+    if (result.data.scores) {
+      const s = result.data.scores;
+      T.printInstant(`[judge] sincerity ${s.sincerity} · knowledge ${s.knowledge} · values ${s.values} — ${s.notes}`);
+    }
     T.addLine('');
 
     if (result.data.passed) return grantReceived(result.data);
