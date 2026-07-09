@@ -17,12 +17,15 @@ Text Domain: benevixit
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  background: var(--paper);
   color: var(--ink);
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 15px;
   line-height: 1.6;
 }
+
+/* Background on html ONLY: a body background paints OVER negative-z children,
+   which would hide the watermark behind solid paper. */
+html { background: var(--paper); }
 
 a { color: var(--accent); }
 
