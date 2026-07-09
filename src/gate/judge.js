@@ -22,24 +22,32 @@ export async function judgeTranscript(env, manifest, transcript) {
     { gateway: { id: env.GATEWAY_ID } },
   );
 
-  return parseScores(res.response ?? '');
+  // Output shape varies by model: `response` may be a string, or an
+  // already-parsed object when the model emits pure JSON (llama-3.3 does
+  // this), or OpenAI-style choices. Handle all three.
+  const out = res?.response ?? res?.choices?.[0]?.message?.content ?? '';
+  if (out !== null && typeof out === 'object') return clampScores(out);
+  return parseScores(String(out));
+}
+
+function clampScores(raw) {
+  const clamp = (n) => (Number.isFinite(+n) ? Math.max(0, Math.min(10, +n)) : 0);
+  return {
+    sincerity: clamp(raw.sincerity),
+    knowledge: clamp(raw.knowledge),
+    values: clamp(raw.values),
+    notes: typeof raw.notes === 'string' ? raw.notes.slice(0, 300) : '',
+  };
 }
 
 function parseScores(text) {
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) {
-    console.error('judge output had no JSON:', String(text).slice(0, 300));
+    console.error('judge output had no JSON:', text.slice(0, 300));
     return null; // fail closed
   }
   try {
-    const raw = JSON.parse(match[0]);
-    const clamp = (n) => (Number.isFinite(+n) ? Math.max(0, Math.min(10, +n)) : 0);
-    return {
-      sincerity: clamp(raw.sincerity),
-      knowledge: clamp(raw.knowledge),
-      values: clamp(raw.values),
-      notes: typeof raw.notes === 'string' ? raw.notes.slice(0, 300) : '',
-    };
+    return clampScores(JSON.parse(match[0]));
   } catch {
     console.error('judge JSON did not parse:', match[0].slice(0, 300));
     return null; // fail closed
