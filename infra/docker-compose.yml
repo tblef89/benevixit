@@ -34,6 +34,7 @@ services:
     volumes:
       - wordpress_data:/var/www/html
       - ./mu-plugins:/var/www/html/wp-content/mu-plugins
+      - ../theme:/var/www/html/wp-content/themes/benevixit
     depends_on:
       db:
         condition: service_healthy
