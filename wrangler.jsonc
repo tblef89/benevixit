@@ -19,6 +19,9 @@
   // Workers AI — all calls routed through the AI Gateway (see GATEWAY_ID below).
   "ai": { "binding": "AI" },
 
+  // Workers Logs — invocation logs + console.error from the DO, viewable in the dashboard.
+  "observability": { "enabled": true },
+
   // Low-churn config only: gate manifest, current passphrase.
   // Mutable counters live in rate limiters and the GateSession DO, never KV.
   "kv_namespaces": [

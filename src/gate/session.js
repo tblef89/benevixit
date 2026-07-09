@@ -70,10 +70,15 @@ export class GateSession {
     // nothing the chat model says can grant access.
     let passed = false;
     if (turns + 1 >= manifest.minTurnsBeforeJudge) {
-      const scores = await judgeTranscript(this.env, manifest, transcript);
-      const verdict = decideVerdict(scores, manifest);
-      passed = verdict.pass;
-      if (verdict.teach && !teaching) await this.ctx.storage.put('teaching', true);
+      try {
+        const scores = await judgeTranscript(this.env, manifest, transcript);
+        const verdict = decideVerdict(scores, manifest);
+        passed = verdict.pass;
+        if (verdict.teach && !teaching) await this.ctx.storage.put('teaching', true);
+      } catch (e) {
+        // Judge trouble must not eat the Keeper's reply. Fail closed: no pass.
+        console.error('judge failed', e);
+      }
     }
 
     if (!passed) {

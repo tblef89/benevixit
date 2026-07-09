@@ -54,6 +54,37 @@ html, body {
 
 a { color: var(--accent); }
 
+/* Ghost footer — barely there until you look for it (ported from renderself). */
+#site-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  padding: 10px 20px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  opacity: 0.25;
+  transition: opacity 0.3s;
+}
+#site-footer:hover { opacity: 0.7; }
+#site-footer nav { display: flex; gap: 16px; }
+#site-footer nav a { color: var(--ink); text-decoration: none; }
+#site-footer nav a:hover { text-decoration: underline; }
+#site-footer p { margin-top: 2px; }
+
+/* Static pages (terms, privacy) */
+.page {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 6rem;
+}
+.page h1 { font-size: 1.1rem; margin-bottom: 1.5rem; letter-spacing: 0.04em; }
+.page h2 { font-size: 0.95rem; margin: 1.5rem 0 0.5rem; color: var(--accent); }
+.page p, .page li { margin-bottom: 0.75rem; color: var(--ink); }
+.page ul { padding-left: 1.25rem; }
+.page .back { display: inline-block; margin-bottom: 2rem; }
+
 @media (prefers-color-scheme: dark) {
   /* Even the dark theme stays warm — dusk, not a basement. */
   :root {
