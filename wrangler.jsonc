@@ -16,7 +16,7 @@
   // Low-churn config only: gate manifest, current passphrase.
   // Mutable counters live in rate limiters and the GateSession DO, never KV.
   "kv_namespaces": [
-    { "binding": "GATE_KV", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }
+    { "binding": "GATE_KV", "id": "4c8c540f919d4d6492012b332d9dc322" }
   ],
 
   // One Durable Object per gate conversation: transcript, turn count, verdicts.
