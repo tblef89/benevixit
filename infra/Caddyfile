@@ -1,0 +1,17 @@
+# shop.benevixit.com origin, behind the Cloudflare proxy.
+#
+# TLS: during first-time cert issuance, either grey-cloud the shop DNS record
+# (turn the Cloudflare proxy off) until Caddy obtains its Let's Encrypt cert,
+# then re-enable the proxy with SSL mode "Full (strict)" — or install a
+# Cloudflare Origin Certificate instead (tls /path/cert.pem /path/key.pem).
+
+shop.benevixit.com {
+	reverse_proxy wordpress:80
+	encode gzip
+
+	header {
+		X-Frame-Options SAMEORIGIN
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}

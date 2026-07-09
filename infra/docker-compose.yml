@@ -1,0 +1,70 @@
+# Bene Vixit shop stack — WordPress + WooCommerce + CipherPay behind Caddy.
+# Deliberately minimal: no Node API, no deploy webhook. The gate lives on
+# Cloudflare Workers; this box only sells the hat.
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - wordpress
+    networks:
+      - frontend
+
+  wordpress:
+    image: wordpress:6-php8.2-apache
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - WORDPRESS_DB_HOST=db
+      - WORDPRESS_DB_NAME=${DB_NAME}
+      - WORDPRESS_DB_USER=${DB_USER}
+      - WORDPRESS_DB_PASSWORD=${DB_PASSWORD}
+      # BV_GRANT_SECRET is defined in wp-config.php via WORDPRESS_CONFIG_EXTRA
+      - WORDPRESS_CONFIG_EXTRA=define('BV_GRANT_SECRET', getenv('BV_GRANT_SECRET'));
+      - BV_GRANT_SECRET=${BV_GRANT_SECRET}
+    volumes:
+      - wordpress_data:/var/www/html
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MARIADB_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MARIADB_DATABASE=${DB_NAME}
+      - MARIADB_USER=${DB_USER}
+      - MARIADB_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  caddy_data:
+  caddy_config:
+  wordpress_data:
+  db_data:
+
+networks:
+  frontend:
+  backend:
+    internal: true
