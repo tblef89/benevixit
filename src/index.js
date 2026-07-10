@@ -33,14 +33,30 @@ function clientIp(request) {
 // proxied to the WordPress origin, so the visitor never leaves benevixit.com.
 // WordPress is configured (WP_HOME/WP_SITEURL) to believe it IS benevixit.com.
 async function proxyToShop(request, env) {
+  const publicUrl = new URL(request.url);
+  const originHost = new URL(env.SHOP_ORIGIN).hostname;
   const url = new URL(request.url);
-  url.hostname = new URL(env.SHOP_ORIGIN).hostname;
+  url.hostname = originHost;
   const proxied = new Request(url, request);
   // Stamp proxy traffic so the origin's canonical-host redirect (which
   // bounces direct shop.benevixit.com visits back to benevixit.com)
   // knows to leave Worker requests alone.
   proxied.headers.set('X-BV-Proxy', '1');
-  return fetch(proxied, { redirect: 'manual' });
+  const res = await fetch(proxied, { redirect: 'manual' });
+  // WordPress builds redirects (e.g. its canonical trailing-slash 301)
+  // from the host it received — the origin's. Rewrite Location headers
+  // back to the public hostname so the browser never leaves it.
+  const loc = res.headers.get('Location');
+  if (loc) {
+    const l = new URL(loc, url);
+    if (l.hostname === originHost) {
+      l.hostname = publicUrl.hostname;
+      const out = new Response(res.body, res);
+      out.headers.set('Location', l.toString());
+      return out;
+    }
+  }
+  return res;
 }
 
 export default {
