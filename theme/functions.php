@@ -43,13 +43,22 @@ add_action('init', function () {
     remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_meta', 40);
 });
 
-// The long description, plainly, where the tabs used to be.
+// The long description, plainly, where the tabs used to be — a printer's
+// ornament between it and the summary, the way a book breathes between
+// chapters.
 add_action('woocommerce_after_single_product_summary', function () {
     $content = get_post_field('post_content', get_the_ID());
     if ($content) {
+        echo '<div class="bv-fleuron" aria-hidden="true"><span></span></div>';
         echo '<div class="bv-description">' . apply_filters('the_content', $content) . '</div>';
     }
 }, 10);
+
+// Browser chrome tinted to match the paper in both schemes (matches the gate).
+add_action('wp_head', function () {
+    echo '<meta name="theme-color" content="#f3ede2" media="(prefers-color-scheme: light)">' . "\n";
+    echo '<meta name="theme-color" content="#201d17" media="(prefers-color-scheme: dark)">' . "\n";
+}, 1);
 
 // Quiet HTML: no emoji scripts, no generator tag.
 remove_action('wp_head', 'print_emoji_detection_script', 7);

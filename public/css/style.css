@@ -28,6 +28,8 @@
   --ink-body: #4a4438; /* running text sits a step softer than headings */
   --ink-soft: #6b6459;
   --accent: #9a7f52; /* patina, not coin */
+  --line: #e2d8c5;
+  color-scheme: light;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -85,6 +87,34 @@ html {
 
 
 .line { white-space: pre-wrap; word-break: break-word; min-height: 1.6em; }
+
+/* The printer's ornament: the key at 16px between major moments, flanked by
+   hairlines — the way a fine book breathes between chapters. One mark, used
+   with discipline; restraint is the flourish. */
+.bv-fleuron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1.75rem auto;
+}
+.bv-fleuron::before,
+.bv-fleuron::after {
+  content: '';
+  width: 3rem;
+  height: 1px;
+  background: var(--line);
+}
+.bv-fleuron span {
+  width: 18px;
+  height: 18px;
+  background-color: var(--ink);
+  opacity: 0.55;
+  /* key_mark.svg is the key with strokes weighted for 18px — the watermark's
+     hairline strokes vanish at fleuron size. */
+  -webkit-mask: url('/art/key_mark.svg') no-repeat center / contain;
+  mask: url('/art/key_mark.svg') no-repeat center / contain;
+}
 
 /* The motto, given its due */
 .quote {
@@ -180,5 +210,7 @@ a { color: var(--accent); }
     --ink-body: #cfc7b8;
     --ink-soft: #a89f8f;
     --accent: #b9a26e; /* the patina holds at dusk too — no coin */
+    --line: #3a342a;
+    color-scheme: dark;
   }
 }

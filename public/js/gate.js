@@ -86,7 +86,14 @@
   T.scrollBottom();
   await T.pause(500);
   await T.print('He lives well who conceals himself well.', 25);
-  T.addLine('');
+  // The printer's ornament closes the epigraph before the machinery begins.
+  const fleuron = document.createElement('div');
+  fleuron.className = 'bv-fleuron';
+  fleuron.setAttribute('aria-hidden', 'true');
+  fleuron.appendChild(document.createElement('span'));
+  document.getElementById('output').appendChild(fleuron);
+  T.scrollBottom();
+  await T.pause(400);
   await T.print('Verifying personhood.', 15);
 
   const cfg = await api('config');

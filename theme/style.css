@@ -36,6 +36,7 @@ Text Domain: benevixit
   --ink-soft: #6b6459;
   --accent: #9a7f52; /* patina, not coin */
   --line: #e2d8c5;
+  color-scheme: light;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -80,6 +81,33 @@ a { color: var(--accent); }
 /* Content sits explicitly above the watermark — no reliance on negative
    z-index paint order, which WP/Woo stylesheets can disturb. */
 .bv-header, .bv-main, #site-footer { position: relative; z-index: 1; }
+
+/* The printer's ornament: the key at 16px between major moments, flanked by
+   hairlines — one mark, used with discipline (matches the gate). */
+.bv-fleuron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 2.25rem auto 0;
+}
+.bv-fleuron::before,
+.bv-fleuron::after {
+  content: '';
+  width: 3rem;
+  height: 1px;
+  background: var(--line);
+}
+.bv-fleuron span {
+  width: 18px;
+  height: 18px;
+  background-color: var(--ink);
+  opacity: 0.55;
+  /* key_mark.svg is the key with strokes weighted for 18px — the watermark's
+     hairline strokes vanish at fleuron size. */
+  -webkit-mask: url('/art/key_mark.svg') no-repeat center / contain;
+  mask: url('/art/key_mark.svg') no-repeat center / contain;
+}
 
 /* Per-page art in pure CSS via the body class — works with JS disabled;
    scenes.json still drives the transition particles. */
@@ -253,7 +281,7 @@ a { color: var(--accent); }
   color: var(--accent) !important;
   border-color: var(--accent) !important;
 }
-.single-product .bv-description { text-align: center; margin: 2rem auto 0; }
+.single-product .bv-description { text-align: center; margin: 1.25rem auto 0; }
 
 /* ── Lightbox for the photographs ── */
 .bv-lightbox {
@@ -355,3 +383,17 @@ a { color: var(--accent); }
 #site-footer nav a { color: var(--ink); text-decoration: none; }
 #site-footer nav a:hover { text-decoration: underline; }
 #site-footer p { margin-top: 2px; }
+
+@media (prefers-color-scheme: dark) {
+  /* Dusk, not a basement — the shop keeps the gate's warmth after dark.
+     Everything is set in the custom properties, so only they move. */
+  :root {
+    --paper: #201d17;
+    --ink: #ece6da;
+    --ink-body: #cfc7b8;
+    --ink-soft: #a89f8f;
+    --accent: #b9a26e;
+    --line: #3a342a;
+    color-scheme: dark;
+  }
+}

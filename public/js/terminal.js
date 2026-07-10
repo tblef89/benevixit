@@ -13,6 +13,9 @@ const Terminal = (() => {
 
   const DEFAULT_SPEED = 30;
   const FAST_SPEED = 10;
+  // Haste is the enemy of quality: every typing speed is stretched by this
+  // factor, so the whole gate slows in step without retuning each call site.
+  const PACE = 1.2;
 
   // Auto-scroll to bottom
   function scrollBottom() {
@@ -30,7 +33,7 @@ const Terminal = (() => {
 
   // Print text character by character
   function print(text, speed) {
-    speed = speed || DEFAULT_SPEED;
+    speed = (speed || DEFAULT_SPEED) * PACE;
     return new Promise(resolve => {
       const div = document.createElement('div');
       div.className = 'line';

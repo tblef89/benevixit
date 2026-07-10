@@ -19,7 +19,7 @@
   'use strict';
 
   var KEY = 'bv-dissolving';
-  var FADE_MS = 200;
+  var FADE_MS = 260;
   var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function cssVar(name, fallback) {
@@ -252,7 +252,7 @@
     }
     function settle() {
       var s = performance.now();
-      var settleMs = 350;
+      var settleMs = 450;
       function sframe(now) {
         var t = Math.min(1, (now - s) / settleMs);
         ctx.clearRect(0, 0, W, H);
@@ -335,9 +335,9 @@
               endTransit();
               // The real watermark (already showing this scene's art) takes
               // over; crossfade the particle copy away.
-              canvas.style.transition = 'opacity 300ms linear';
+              canvas.style.transition = 'opacity 400ms linear';
               canvas.style.opacity = '0';
-              setTimeout(function () { canvas.remove(); }, 320);
+              setTimeout(function () { canvas.remove(); }, 420);
             }, scene.holdMs || 100);
           });
         };
