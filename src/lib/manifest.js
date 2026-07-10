@@ -19,11 +19,16 @@ const DEFAULTS = {
   "passThreshold": { "sincerity": 5, "knowledge": 3, "values": 3 },
   "teachThreshold": { "sincerity": 7 },
   "passLine": "Welcome. You belong.",
+  "doorLine": "The door opens.",
+  "exhaustedLine": "I am sorry; I cannot let you through. Study Zcash and return.",
+  "brevityLine": "There is beauty in brevity. Please shorten your response.",
   "passphrase": "BENEVIXIT",
   "grantTtlSeconds": 86400,
   "checkoutUrl": "https://benevixit.com/product/herringbone-cap",
   "debugScores": false,
-  "sessionTtlSeconds": 3600
+  "sessionTtlSeconds": 3600,
+  "cooldownSeconds": 3600,
+  "cooldownMessage": "The door remembers. Return when some time has passed."
 };
 
 export async function loadManifest(env) {

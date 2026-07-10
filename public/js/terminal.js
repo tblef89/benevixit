@@ -98,7 +98,7 @@ const Terminal = (() => {
           tapHintShown = true;
           const hint = document.createElement('div');
           hint.className = 'line system';
-          hint.textContent = '(tap anywhere to speak)';
+          hint.textContent = '(Tap anywhere to speak)';
           output.appendChild(hint);
           scrollBottom();
         }
