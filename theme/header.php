@@ -3,7 +3,7 @@
 <head>
 <meta charset="<?php bloginfo('charset'); ?>">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<style>.bv-covered body{visibility:hidden}</style>
+<style>.bv-covered body>:not(.bv-watermark){visibility:hidden}</style>
 <script>try{if(sessionStorage.getItem('bv-dissolving'))document.documentElement.classList.add('bv-covered')}catch(e){}</script>
 <?php wp_head(); ?>
 </head>

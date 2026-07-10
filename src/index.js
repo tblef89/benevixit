@@ -87,15 +87,32 @@ export default {
   },
 };
 
+// Rejection cooldown: a hashed-IP marker in KV with a TTL. Deliberately
+// light — a determined visitor can rotate IPs, and that's fine; the point
+// is that rejection carries a little weight. One write per rejection and
+// self-expiring, so KV's write limits and privacy posture both hold (we
+// store a salted hash, never the address).
+async function ipLockKey(ip, env) {
+  const data = new TextEncoder().encode(`${env.GRANT_SECRET}|${ip}`);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  const hex = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+  return `lockout:${hex}`;
+}
+
 async function createSession(body, request, env) {
   const ip = clientIp(request);
   const { success } = await env.SESSION_RL.limit({ key: ip });
   if (!success) return err('rate_limited', 'Too many sessions. Breathe.', 429);
 
+  const manifest = await loadManifest(env);
+  if (manifest.cooldownSeconds > 0) {
+    const locked = await env.GATE_KV.get(await ipLockKey(ip, env));
+    if (locked) return err('cooldown', manifest.cooldownMessage, 429);
+  }
+
   const human = await verifyTurnstile(env.TURNSTILE_SECRET, body.turnstileToken, ip);
   if (!human) return err('turnstile_failed', 'Could not verify you are a person.', 403);
 
-  const manifest = await loadManifest(env);
   const sessionId = crypto.randomUUID();
   // The DO is created lazily on first message; the opening line is static config.
   return ok({ sessionId, opening: manifest.opening, maxTurns: manifest.maxTurns });
@@ -115,11 +132,25 @@ async function relayToSession(body, request, env, path) {
   }
 
   const stub = env.GATE_SESSION.get(env.GATE_SESSION.idFromName(sessionId));
-  return stub.fetch(new Request(`https://gate-session${path}`, {
+  const res = await stub.fetch(new Request(`https://gate-session${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message: message.trim() }),
   }));
+
+  // A conversation that ends in rejection starts the cooldown clock.
+  const payload = await res.json().catch(() => null);
+  if (payload?.data?.exhausted) {
+    const manifest = await loadManifest(env);
+    if (manifest.cooldownSeconds > 0) {
+      await env.GATE_KV.put(await ipLockKey(ip, env), '1', {
+        expirationTtl: Math.max(60, manifest.cooldownSeconds),
+      });
+    }
+  }
+  return payload
+    ? Response.json(payload, { status: res.status })
+    : err('internal', 'The gate is jammed. Try again shortly.', 500);
 }
 
 async function passphrase(body, request, env) {

@@ -46,6 +46,20 @@ html { background: var(--paper); }
 }
 
 .line { white-space: pre-wrap; word-break: break-word; min-height: 1.6em; }
+
+/* The motto, given its due */
+.quote {
+  margin: 0 0 0.75rem;
+  font-size: 1.35rem;
+  line-height: 1.5;
+}
+.quote em { font-style: italic; }
+.quote .attrib {
+  font-size: 0.8rem;
+  font-style: normal;
+  color: var(--ink-soft);
+  margin-top: 0.35rem;
+}
 .line.keeper { color: var(--ink); }
 .line.visitor { color: var(--ink-soft); }
 .line.system { color: var(--accent); font-style: italic; }

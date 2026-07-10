@@ -1,14 +1,14 @@
 /**
- * dissolve.js — the key travels; the text just gets out of the way.
+ * dissolve.js — the key persists; the text just gets out of the way.
  *
  * Every page carries its scene's SVG as a fixed background watermark
- * (.bv-watermark). On departure, the page content fades out plainly while
- * the watermark ignites into ink particles and scatters. The navigation
- * happens against bare paper (the html background never changes). On
- * arrival, particles fly back in, redraw the next scene's watermark exactly
- * where the real element sits, settle to its resting opacity — and only
- * then does the new page's content fade in around it. The art performs;
- * the content is furniture.
+ * (.bv-watermark). On departure only the content fades — the key stays put
+ * through the navigation (the arriving page paints it immediately; the
+ * covered state hides everything EXCEPT the watermark). Once the new page
+ * is there, the key performs: it ignites and scatters into ink particles,
+ * then reforms and settles back into place while the content fades in
+ * around it. Cinematic by intent — the rebuild is allowed to continue after
+ * the page is already readable.
  *
  * Scenes are content: SVGs in /art/, routes in /art/scenes.json. Missing or
  * malformed art degrades to a plain content fade — it can never break
@@ -18,7 +18,7 @@
   'use strict';
 
   var KEY = 'bv-dissolving';
-  var FADE_MS = 200; // content fade, both directions
+  var FADE_MS = 200;
   var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function cssVar(name, fallback) {
@@ -26,8 +26,6 @@
     return (v && v.trim()) || fallback;
   }
   function ink() { return cssVar('--ink', '#23201a'); }
-  // Geometry the particles must land on — kept in CSS custom properties so
-  // the watermark rule and this script can never disagree.
   function watermarkGeom() {
     return {
       heightFrac: (parseFloat(cssVar('--wm-height', '72')) || 72) / 100,
@@ -46,13 +44,28 @@
     return c;
   }
 
+  function contentChildren() {
+    return Array.prototype.filter.call(document.body.children, function (el) {
+      return !el.classList.contains('bv-watermark') && !el.hasAttribute('data-bv-cover');
+    });
+  }
+
   function fadeContent(to, ms, done) {
-    var b = document.body;
-    b.style.transition = 'opacity ' + ms + 'ms ease';
-    // Force a style flush so the transition always fires.
-    void b.offsetWidth; // eslint-disable-line no-unused-expressions
-    b.style.opacity = String(to);
-    setTimeout(done, ms + 30);
+    var els = contentChildren();
+    els.forEach(function (el) {
+      el.style.transition = 'opacity ' + ms + 'ms ease';
+      void el.offsetWidth; // eslint-disable-line no-unused-expressions
+      el.style.opacity = String(to);
+    });
+    setTimeout(function () {
+      if (to === 1) {
+        els.forEach(function (el) {
+          el.style.transition = '';
+          el.style.opacity = '';
+        });
+      }
+      if (done) done();
+    }, ms + 30);
   }
 
   // ── Scenes ──
@@ -119,7 +132,6 @@
             var n = Math.max(2, Math.round(count * (lens[i] / total)));
             for (var k = 0; k < n; k++) {
               var p = g.getPointAtLength((lens[i] * k) / n);
-              // Normalize by HEIGHT (mask-size is auto <height>).
               pts.push({ x: (p.x - minX - w / 2) / h, y: (p.y - minY - h / 2) / h });
             }
           });
@@ -149,20 +161,20 @@
         hy: cy + p.y * size,
         fx: cx + Math.cos(angle) * dist,
         fy: cy + Math.sin(angle) * dist,
-        delay: Math.random() * 0.25,
+        delay: Math.random() * 0.3,
       };
     });
   }
 
-  // 'form': far → home, then settle from travel opacity down to rest.
-  // 'scatter': home → far, igniting quickly from rest to travel opacity.
+  // 'scatter': home → far, igniting from rest opacity. 'form': far → home,
+  // then settle back down to the watermark's resting opacity.
   function animateParticles(canvas, particles, direction, scene, done) {
     var ctx = canvas.getContext('2d');
     var W = canvas.width, H = canvas.height;
     var inkColor = ink();
     var rest = watermarkGeom().restOpacity;
     var travel = 0.85;
-    var ms = direction === 'form' ? (scene.formMs || 750) : (scene.scatterMs || 450);
+    var ms = direction === 'form' ? (scene.formMs || 1400) : (scene.scatterMs || 900);
     var start = performance.now();
     function frame(now) {
       var t = Math.min(1, (now - start) / ms);
@@ -170,7 +182,7 @@
       ctx.fillStyle = inkColor;
       ctx.globalAlpha = direction === 'form'
         ? travel
-        : rest + (travel - rest) * Math.min(1, t * 3);
+        : rest + (travel - rest) * Math.min(1, t * 2.5);
       for (var i = 0; i < particles.length; i++) {
         var p = particles[i];
         var e = easeInOutCubic(Math.min(1, Math.max(0, (t - p.delay) / (1 - p.delay))));
@@ -191,12 +203,12 @@
     }
     function settle() {
       var s = performance.now();
-      var settleMs = 250;
+      var settleMs = 350;
       function sframe(now) {
         var t = Math.min(1, (now - s) / settleMs);
         ctx.clearRect(0, 0, W, H);
         ctx.fillStyle = inkColor;
-        ctx.globalAlpha = travel + (rest - travel) * t;
+        ctx.globalAlpha = travel + (rest - travel) * easeInOutCubic(t);
         for (var i = 0; i < particles.length; i++) {
           ctx.fillRect(particles[i].hx, particles[i].hy, 2, 2);
         }
@@ -209,33 +221,16 @@
     requestAnimationFrame(frame);
   }
 
-  // ── Departure: content fades plainly; only the key performs ──
+  // ── Departure: content fades; the key does not move ──
   function maskedNavigate(go) {
     if (reduced) return go();
-    var pending = 1;
-    var finish = function () {
-      if (--pending === 0) {
-        try { sessionStorage.setItem(KEY, String(Date.now())); } catch (e) {}
-        go();
-      }
-    };
-    loadScenes().then(function (cfg) {
-      var scene = sceneFor(location.pathname, cfg);
-      if (!scene || !scene.art) return;
-      pending++;
-      sampleArt(scene.art, scene.particles || 1400)
-        .then(function (art) {
-          var canvas = makeCanvas();
-          animateParticles(canvas, buildParticles(art, canvas), 'scatter', scene, finish);
-        })
-        .catch(finish);
+    fadeContent(0, FADE_MS, function () {
+      try { sessionStorage.setItem(KEY, String(Date.now())); } catch (e) {}
+      go();
     });
-    // The content (watermark included — the canvas copy takes over) fades out
-    // fast and without ceremony.
-    fadeContent(0, FADE_MS, finish);
   }
 
-  // ── Arrival: the key lands first, then the content fades in around it ──
+  // ── Arrival: key already painted; it performs, content joins ──
   function arriving() {
     var stamp = null;
     try {
@@ -248,37 +243,53 @@
       return;
     }
 
-    // Content stays invisible (bv-covered) while the key travels in.
-    document.body.style.opacity = '0';
+    // The covered state already hides everything except the watermark.
+    // Pin content at opacity 0, then lift the class — key stays visible.
+    contentChildren().forEach(function (el) { el.style.opacity = '0'; });
     document.documentElement.classList.remove('bv-covered');
 
-    var reveal = function (canvas) {
-      fadeContent(1, FADE_MS + 100, function () {
-        document.body.style.transition = '';
-        if (canvas) canvas.remove();
-      });
-      // The particle copy crossfades out as the real watermark fades in
-      // with the rest of the content.
-      if (canvas) {
-        canvas.style.transition = 'opacity ' + (FADE_MS + 100) + 'ms linear';
-        canvas.style.opacity = '0';
-      }
+    var wm = document.querySelector('.bv-watermark');
+    var finish = function (canvas) {
+      if (wm) wm.style.visibility = '';
+      if (canvas) canvas.remove();
     };
 
     loadScenes()
       .then(function (cfg) {
         var scene = sceneFor(location.pathname, cfg);
-        if (!scene || !scene.art) return reveal(null);
+        if (!scene || !scene.art || !wm) {
+          return fadeContent(1, FADE_MS + 100, null);
+        }
         return sampleArt(scene.art, scene.particles || 1400)
           .then(function (art) {
             var canvas = makeCanvas();
-            animateParticles(canvas, buildParticles(art, canvas), 'form', scene, function () {
-              setTimeout(function () { reveal(canvas); }, scene.holdMs || 100);
+            var particles = buildParticles(art, canvas);
+            // Take over from the real watermark seamlessly: draw the copy at
+            // rest in place, hide the original, then perform.
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = ink();
+            ctx.globalAlpha = watermarkGeom().restOpacity;
+            particles.forEach(function (p) { ctx.fillRect(p.hx, p.hy, 2, 2); });
+            ctx.globalAlpha = 1;
+            wm.style.visibility = 'hidden';
+            animateParticles(canvas, particles, 'scatter', scene, function () {
+              // Content fades in while the key is still reforming — the
+              // rebuild may outlast the page load, deliberately.
+              fadeContent(1, scene.formMs || 1400, null);
+              animateParticles(canvas, particles, 'form', scene, function () {
+                setTimeout(function () { finish(canvas); }, scene.holdMs || 100);
+              });
             });
           })
-          .catch(function () { reveal(null); });
+          .catch(function () {
+            finish(null);
+            fadeContent(1, FADE_MS + 100, null);
+          });
       })
-      .catch(function () { reveal(null); });
+      .catch(function () {
+        finish(null);
+        fadeContent(1, FADE_MS + 100, null);
+      });
   }
 
   // ── Interception ──
@@ -318,8 +329,12 @@
   addEventListener('pageshow', function (e) {
     if (e.persisted) {
       document.documentElement.classList.remove('bv-covered');
-      document.body.style.opacity = '';
-      document.body.style.transition = '';
+      var wm = document.querySelector('.bv-watermark');
+      if (wm) wm.style.visibility = '';
+      contentChildren().forEach(function (el) {
+        el.style.opacity = '';
+        el.style.transition = '';
+      });
       document.querySelectorAll('canvas[data-bv-cover]').forEach(function (c) { c.remove(); });
     }
   });

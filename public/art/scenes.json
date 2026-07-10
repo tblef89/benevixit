@@ -1,9 +1,9 @@
 {
   "defaults": {
     "particles": 1400,
-    "scale": 0.5,
-    "formMs": 750,
-    "holdMs": 300
+    "scatterMs": 900,
+    "formMs": 1400,
+    "holdMs": 100
   },
   "scenes": [
     {

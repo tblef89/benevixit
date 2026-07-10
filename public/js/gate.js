@@ -16,7 +16,7 @@
       });
       return await res.json();
     } catch (e) {
-      return { ok: false, error: { code: 'network', message: 'the line went quiet. say that again.' } };
+      return { ok: false, error: { code: 'network', message: 'The line went quiet. Say that again.' } };
     }
   }
 
@@ -51,41 +51,52 @@
 
   async function grantReceived(data) {
     T.addLine('');
-    await T.print('the door opens.', 40);
+    await T.print(data.doorLine || 'The door opens.', 40);
     T.addLine('');
     if (data.passphrase) {
-      await T.print('remember the word — it changes, but for now it is yours:', 20);
-      T.addCopyable(data.passphrase, 'click to copy the word');
+      await T.print('Remember the word — it changes, but for now it is yours:', 20);
+      T.addCopyable(data.passphrase, 'Click to copy the word');
       T.addLine('');
     }
-    await T.print('your pass (valid one day):', 20);
-    T.addCopyable(data.grant, 'click to copy your pass');
+    await T.print('Your pass (valid one day):', 20);
+    T.addCopyable(data.grant, 'Click to copy your pass');
     T.addLine('');
     const url = `${data.checkoutUrl}?bv_grant=${encodeURIComponent(data.grant)}`;
     const div = document.createElement('div');
     div.className = 'line';
     const a = document.createElement('a');
     a.href = url;
-    a.textContent = '[ enter the shop ]';
+    a.textContent = '[ Enter the shop ]';
     div.appendChild(a);
     document.getElementById('output').appendChild(div);
     T.scrollBottom();
   }
 
-  // ── Opening ──
-  await T.print('bene vixit, bene qui latuit.', 35);
-  await T.print('he lives well who conceals himself well.', 25);
+  // ── Opening: the motto, given its due ──
+  const quote = document.createElement('blockquote');
+  quote.className = 'quote';
+  const qline = document.createElement('em');
+  qline.textContent = '“Bene vixit, bene qui latuit.”';
+  const attrib = document.createElement('div');
+  attrib.className = 'attrib';
+  attrib.textContent = '— Ovid, Tristia, 10 AD';
+  quote.appendChild(qline);
+  quote.appendChild(attrib);
+  document.getElementById('output').appendChild(quote);
+  T.scrollBottom();
+  await T.pause(500);
+  await T.print('He lives well who conceals himself well.', 25);
   T.addLine('');
-  await T.print('verifying you are a person...', 15);
+  await T.print('Verifying personhood.', 15);
 
   const cfg = await api('config');
   if (!cfg.ok || !cfg.data?.turnstileSiteKey) {
-    await T.print('the gate is jammed. try again shortly.', 30);
+    await T.print('The gate is jammed. Try again shortly.', 30);
     return;
   }
   const token = await getTurnstileToken(cfg.data.turnstileSiteKey);
   if (!token) {
-    await T.print('verification failed. reload and try again.', 30);
+    await T.print('Verification failed. Reload and try again.', 30);
     return;
   }
 
@@ -99,7 +110,7 @@
   T.addLine('');
   await T.print(opening, 35);
   T.addLine('');
-  T.printInstant("(if you already know the word: /word <phrase>)");
+  T.printInstant("(If you already know the word: /word <phrase>)");
   T.addLine('');
 
   // Silence looks like death in a terminal — show a pulse while models run.
@@ -110,7 +121,7 @@
     let n = 0;
     const iv = setInterval(() => {
       n = (n % 3) + 1;
-      div.textContent = 'the keeper considers' + '.'.repeat(n);
+      div.textContent = 'The keeper considers' + '.'.repeat(n);
       T.scrollBottom();
     }, 350);
     return () => { clearInterval(iv); div.remove(); };
