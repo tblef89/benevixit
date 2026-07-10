@@ -1,3 +1,17 @@
+/* Self-hosted variable fonts — no third party sees a visitor load a page. */
+@font-face {
+  font-family: 'Cinzel';
+  src: url('/fonts/Cinzel.woff2') format('woff2');
+  font-weight: 400 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cormorant Garamond';
+  src: url('/fonts/CormorantGaramond-VariableFont_wght.woff2') format('woff2');
+  font-weight: 300 700;
+  font-display: swap;
+}
+
 /* bene vixit — paper terminal.
    privacy = light: warm paper, dark ink. not another green-on-black cave. */
 
@@ -13,8 +27,9 @@
 html, body {
   height: 100%;
   color: var(--ink);
-  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 15px;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 500;
+  font-size: 18px;
   line-height: 1.6;
 }
 
@@ -50,7 +65,7 @@ html { background: var(--paper); }
 /* The motto, given its due */
 .quote {
   margin: 0 0 0.75rem;
-  font-size: 1.35rem;
+  font-size: 1.7rem;
   line-height: 1.5;
 }
 .quote em { font-style: italic; }
@@ -94,7 +109,7 @@ a { color: var(--accent); }
   right: 0;
   z-index: 10;
   padding: 10px 20px;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   color: var(--ink-soft);
   opacity: 0.25;
@@ -116,7 +131,7 @@ a { color: var(--accent); }
   margin: 0 auto;
   padding: 3rem 1.25rem 6rem;
 }
-.page h1 { font-size: 1.1rem; margin-bottom: 1.5rem; letter-spacing: 0.04em; }
+.page h1 { font-family: 'Cinzel', serif; font-size: 1.2rem; margin-bottom: 1.5rem; letter-spacing: 0.06em; }
 .page h2 { font-size: 0.95rem; margin: 1.5rem 0 0.5rem; color: var(--accent); }
 .page p, .page li { margin-bottom: 0.75rem; color: var(--ink); }
 .page ul { padding-left: 1.25rem; }
