@@ -37,6 +37,11 @@ html, body {
    which would hide the watermark behind solid paper. */
 html { background: var(--paper); }
 
+#terminal, #site-footer, .page {
+  position: relative;
+  z-index: 1;
+}
+
 #terminal {
   max-width: 46rem;
   margin: 0 auto;
@@ -52,7 +57,7 @@ html { background: var(--paper); }
 .bv-watermark {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
   background-color: var(--ink);
   opacity: var(--wm-opacity);
