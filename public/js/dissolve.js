@@ -27,16 +27,84 @@
     return (v && v.trim()) || fallback;
   }
   function ink() { return cssVar('--ink', '#2c2822'); }
-  function watermarkGeom() {
-    var rest = null;
-    var el = document.querySelector('.bv-watermark');
-    if (el) {
-      var o = parseFloat(getComputedStyle(el).opacity);
-      if (isFinite(o) && o > 0) rest = o;
+
+  // ── Watermark geometry: measure what is actually rendered ──
+  // Pages size the mask differently (the gate's key by height, the product
+  // arch by width and shifted up, the wall by width). The particle copy must
+  // land exactly on the real element, so we resolve the computed mask-size /
+  // mask-position against the element box instead of assuming any one model.
+  function evalCssLength(expr, ref) {
+    var s = expr
+      .replace(/calc\(/g, '(')
+      .replace(/min\(/g, 'Math.min(')
+      .replace(/max\(/g, 'Math.max(')
+      .replace(/([\d.]+)px/g, '$1')
+      .replace(/([\d.]+)%/g, '($1*' + ref + '/100)');
+    if (!/^[\d\s.,+\-*/()]*$/.test(s.replace(/Math\.(min|max)/g, ''))) return null;
+    try {
+      var v = Function('return (' + s + ')')();
+      return isFinite(v) ? v : null;
+    } catch (e) { return null; }
+  }
+  function splitTopLevel(s) {
+    var parts = [], depth = 0, cur = '';
+    for (var i = 0; i < s.length; i++) {
+      var c = s[i];
+      if (c === '(') depth++;
+      if (c === ')') depth--;
+      if (c === ' ' && depth === 0) {
+        if (cur) parts.push(cur);
+        cur = '';
+      } else cur += c;
     }
+    if (cur) parts.push(cur);
+    return parts;
+  }
+  var POS_KEYWORDS = { left: '0%', top: '0%', center: '50%', right: '100%', bottom: '100%' };
+  // Returns the rendered art box as viewport fractions plus the resting
+  // opacity — everything the particles need to impersonate the element.
+  function measureWatermark(aspect) {
+    var el = document.querySelector('.bv-watermark');
+    if (!el || !aspect) return null;
+    try {
+      var cs = getComputedStyle(el);
+      var r = el.getBoundingClientRect();
+      var W = r.width, H = r.height;
+      if (!W || !H) return null;
+      var size = splitTopLevel(cs.maskSize || cs.webkitMaskSize || '');
+      var w = null, h = null;
+      var sx = size[0] || 'auto', sy = size[1] || 'auto';
+      if (sx !== 'auto') w = evalCssLength(sx, W);
+      if (sy !== 'auto') h = evalCssLength(sy, H);
+      if (w === null && h === null) h = H * ((parseFloat(cssVar('--wm-height', '72')) || 72) / 100);
+      if (w === null) w = h * aspect;
+      if (h === null) h = w / aspect;
+      if (!w || !h) return null;
+      var pos = splitTopLevel(cs.maskPosition || cs.webkitMaskPosition || '');
+      var pxs = POS_KEYWORDS[pos[0]] || pos[0] || '50%';
+      var pys = POS_KEYWORDS[pos[1]] || pos[1] || '50%';
+      // background-position semantics: % places within the leftover space.
+      var px = pxs.indexOf('%') !== -1
+        ? (W - w) * ((evalCssLength(pxs, 100) || 0) / 100)
+        : (evalCssLength(pxs, W - w) || 0);
+      var py = pys.indexOf('%') !== -1
+        ? (H - h) * ((evalCssLength(pys, 100) || 0) / 100)
+        : (evalCssLength(pys, H - h) || 0);
+      var o = parseFloat(cs.opacity);
+      return {
+        hFrac: h / H,
+        cxFrac: (px + w / 2) / W,
+        cyFrac: (py + h / 2) / H,
+        opacity: isFinite(o) && o > 0 ? o : (parseFloat(cssVar('--wm-opacity', '0.07')) || 0.07),
+      };
+    } catch (e) { return null; }
+  }
+  function defaultGeom() {
     return {
-      heightFrac: (parseFloat(cssVar('--wm-height', '72')) || 72) / 100,
-      restOpacity: rest || parseFloat(cssVar('--wm-opacity', '0.07')) || 0.07,
+      hFrac: (parseFloat(cssVar('--wm-height', '72')) || 72) / 100,
+      cxFrac: 0.5,
+      cyFrac: 0.5,
+      opacity: parseFloat(cssVar('--wm-opacity', '0.07')) || 0.07,
     };
   }
 
@@ -113,7 +181,8 @@
   // Dense traced SVGs (thousands of paths) take seconds to measure; the
   // resulting points are tiny. Pay the geometry cost once per session.
   var artCache = {};
-  function cacheKeyFor(url, count) { return 'bv-pts:' + url + ':' + count; }
+  // v2: entries carry the art's aspect ratio alongside the points.
+  function cacheKeyFor(url, count) { return 'bv-pts2:' + url + ':' + count; }
 
   function sampleArt(url, count) {
     var ck = cacheKeyFor(url, count);
@@ -122,7 +191,7 @@
       var stored = sessionStorage.getItem(ck);
       if (stored) {
         var parsed = JSON.parse(stored);
-        if (parsed && parsed.pts && parsed.pts.length) {
+        if (parsed && parsed.pts && parsed.pts.length && parsed.aspect) {
           artCache[ck] = parsed;
           return Promise.resolve(parsed);
         }
@@ -173,7 +242,7 @@
             }
           });
           if (!pts.length) throw new Error('no points');
-          var result = { pts: pts };
+          var result = { pts: pts, aspect: w / h };
           artCache[ck] = result;
           try { sessionStorage.setItem(ck, JSON.stringify(result)); } catch (e) {}
           return result;
@@ -187,10 +256,9 @@
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
-  function buildParticles(art, canvas) {
-    var geom = watermarkGeom();
-    var size = canvas.height * geom.heightFrac;
-    var cx = canvas.width / 2, cy = canvas.height / 2;
+  function buildParticles(art, canvas, geom) {
+    var size = canvas.height * geom.hFrac;
+    var cx = canvas.width * geom.cxFrac, cy = canvas.height * geom.cyFrac;
     return art.pts.map(function (p) {
       var angle = Math.random() * Math.PI * 2;
       var dist = Math.max(canvas.width, canvas.height) * (0.5 + Math.random() * 0.4);
@@ -204,34 +272,80 @@
     });
   }
 
-  function drawAtRest(canvas, particles) {
+  // The art rests as itself and travels as particles: a tinted raster of the
+  // SVG carries the full visual mass at either end of the journey, because
+  // sparse 2px dots can never match the solid strokes of the real mask —
+  // that gap is what previously forced the particles to "ignite" brighter
+  // than the watermark they impersonate.
+  function loadArtImage(url) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+  function artBox(canvas, geom, aspect) {
+    var h = canvas.height * geom.hFrac;
+    var w = h * aspect;
+    return {
+      w: w,
+      h: h,
+      x: canvas.width * geom.cxFrac - w / 2,
+      y: canvas.height * geom.cyFrac - h / 2,
+    };
+  }
+  function tintedImage(img, box) {
+    var c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(box.w));
+    c.height = Math.max(1, Math.round(box.h));
+    var x = c.getContext('2d');
+    x.drawImage(img, 0, 0, c.width, c.height);
+    x.globalCompositeOperation = 'source-in';
+    x.fillStyle = ink();
+    x.fillRect(0, 0, c.width, c.height);
+    return { cnv: c, x: box.x, y: box.y, w: box.w, h: box.h };
+  }
+
+  function drawAtRest(canvas, image, particles, opacity) {
     var ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = ink();
-    ctx.globalAlpha = watermarkGeom().restOpacity;
-    for (var i = 0; i < particles.length; i++) {
-      ctx.fillRect(particles[i].hx, particles[i].hy, 2, 2);
+    ctx.globalAlpha = opacity;
+    if (image) {
+      ctx.drawImage(image.cnv, image.x, image.y, image.w, image.h);
+    } else {
+      ctx.fillStyle = ink();
+      for (var i = 0; i < particles.length; i++) {
+        ctx.fillRect(particles[i].hx, particles[i].hy, 2, 2);
+      }
     }
     ctx.globalAlpha = 1;
   }
 
-  // 'scatter': home → far, igniting from rest opacity. 'form': far → home,
-  // then settle back down to the watermark's resting opacity.
-  function animateParticles(canvas, particles, direction, scene, done) {
+  // 'scatter': home → far. 'form': far → home. Particles hold the
+  // watermark's own resting opacity throughout — the art travels, it does
+  // not ignite. Anything bolder reads as a different object than the one
+  // it claims to be.
+  function animateParticles(canvas, particles, direction, scene, opacity, image, done) {
     var ctx = canvas.getContext('2d');
     var W = canvas.width, H = canvas.height;
     var inkColor = ink();
-    var rest = watermarkGeom().restOpacity;
-    var travel = 0.85;
     var ms = direction === 'form' ? (scene.formMs || 1400) : (scene.scatterMs || 900);
     var start = performance.now();
     function frame(now) {
       var t = Math.min(1, (now - start) / ms);
       ctx.clearRect(0, 0, W, H);
+      // The real drawing hands mass to the particles as they depart, and
+      // receives it back as they land; both stay at the resting opacity.
+      var imgAlpha = direction === 'form'
+        ? Math.max(0, (t - 0.65) / 0.35)
+        : Math.max(0, 1 - t / 0.35);
+      if (image && imgAlpha > 0) {
+        ctx.globalAlpha = opacity * easeInOutCubic(imgAlpha);
+        ctx.drawImage(image.cnv, image.x, image.y, image.w, image.h);
+      }
       ctx.fillStyle = inkColor;
-      ctx.globalAlpha = direction === 'form'
-        ? travel
-        : rest + (travel - rest) * Math.min(1, t * 2.5);
+      ctx.globalAlpha = opacity * (image ? easeInOutCubic(1 - imgAlpha) : 1);
       for (var i = 0; i < particles.length; i++) {
         var p = particles[i];
         var e = easeInOutCubic(Math.min(1, Math.max(0, (t - p.delay) / (1 - p.delay))));
@@ -247,41 +361,34 @@
       }
       ctx.globalAlpha = 1;
       if (t < 1) requestAnimationFrame(frame);
-      else if (direction === 'form') settle();
       else done();
-    }
-    function settle() {
-      var s = performance.now();
-      var settleMs = 450;
-      function sframe(now) {
-        var t = Math.min(1, (now - s) / settleMs);
-        ctx.clearRect(0, 0, W, H);
-        ctx.fillStyle = inkColor;
-        ctx.globalAlpha = travel + (rest - travel) * easeInOutCubic(t);
-        for (var i = 0; i < particles.length; i++) {
-          ctx.fillRect(particles[i].hx, particles[i].hy, 2, 2);
-        }
-        ctx.globalAlpha = 1;
-        if (t < 1) requestAnimationFrame(sframe);
-        else done();
-      }
-      requestAnimationFrame(sframe);
     }
     requestAnimationFrame(frame);
   }
 
-  // ── Departure: content fades; record which art we leave behind ──
+  // ── Departure: content fades; record which art we leave behind, and
+  // exactly how this page rendered it — box and opacity — so the arriving
+  // page can redraw it in place instead of guessing. ──
   function maskedNavigate(go) {
     if (reduced) return go();
-    var fromArt = null;
+    var fromArt = null, fromGeom = null, fromCount = 1400;
     var scenesReady = loadScenes().then(function (cfg) {
       var scene = sceneFor(location.pathname, cfg);
-      if (scene && scene.art) fromArt = scene.art;
+      if (!scene || !scene.art) return;
+      fromArt = scene.art;
+      fromCount = scene.particles || 1400;
+      // Measure the real element NOW, on the page the art actually rests
+      // on — the arriving page styles its watermark differently.
+      return sampleArt(scene.art, fromCount).then(function (art) {
+        fromGeom = measureWatermark(art.aspect);
+      }).catch(function () {});
     }).catch(function () {});
     fadeContent(0, FADE_MS, function () {
       scenesReady.then(function () {
         try {
-          sessionStorage.setItem(KEY, JSON.stringify({ t: Date.now(), from: fromArt }));
+          sessionStorage.setItem(KEY, JSON.stringify({
+            t: Date.now(), from: fromArt, geom: fromGeom, count: fromCount,
+          }));
         } catch (e) {}
         go();
       });
@@ -310,27 +417,58 @@
     contentChildren().forEach(function (el) { el.style.opacity = '0'; });
     document.documentElement.classList.remove('bv-covered');
 
-    var bail = function (canvas) {
+    // The previous art goes back up immediately — before scenes.json even
+    // returns — in the exact box and opacity the origin page rendered it,
+    // so the art never blinks out across the navigation.
+    var canvas = makeCanvas();
+    var fromGeom = flag.geom || null;
+    var fromReady = flag.from
+      ? sampleArt(flag.from, flag.count || 1400).catch(function () { return null; })
+      : Promise.resolve(null);
+    var fromImgReady = flag.from
+      ? loadArtImage(flag.from).catch(function () { return null; })
+      : Promise.resolve(null);
+    var fromDrawn = fromReady.then(function (art) {
+      if (!art) return null;
+      var geom = fromGeom || defaultGeom();
+      var particles = buildParticles(art, canvas, geom);
+      var box = artBox(canvas, geom, art.aspect);
+      return fromImgReady.then(function (img) {
+        var image = img ? tintedImage(img, box) : null;
+        drawAtRest(canvas, image, particles, geom.opacity);
+        return { particles: particles, image: image, opacity: geom.opacity };
+      });
+    });
+
+    var bail = function () {
       endTransit();
-      if (canvas) canvas.remove();
+      // Fade the cover out rather than snapping it off — from-art may be up.
+      canvas.style.transition = 'opacity 200ms linear';
+      canvas.style.opacity = '0';
+      setTimeout(function () { canvas.remove(); }, 220);
       fadeContent(1, FADE_MS + 100, null);
     };
 
     loadScenes()
       .then(function (cfg) {
         var scene = sceneFor(location.pathname, cfg);
-        if (!scene || !scene.art) return bail(null);
+        if (!scene || !scene.art) return bail();
         applyScene(scene);
-
-        var canvas = makeCanvas();
         var count = scene.particles || 1400;
         // Start measuring the destination art immediately — it runs while
         // the previous art scatters.
         var targetReady = sampleArt(scene.art, count);
 
-        var finish = function (formScene, targetParticles) {
-          fadeContent(1, formScene.formMs || 1400, null);
-          animateParticles(canvas, targetParticles, 'form', formScene, function () {
+        var finish = function (art) {
+          // Measure how THIS page renders its watermark; the forming art
+          // must land exactly on the element that takes over afterwards.
+          var destGeom = measureWatermark(art.aspect) || defaultGeom();
+          var targetParticles = buildParticles(art, canvas, destGeom);
+          var box = artBox(canvas, destGeom, art.aspect);
+          loadArtImage(scene.art).catch(function () { return null; }).then(function (img) {
+            var image = img ? tintedImage(img, box) : null;
+          fadeContent(1, scene.formMs || 1400, null);
+          animateParticles(canvas, targetParticles, 'form', scene, destGeom.opacity, image, function () {
             setTimeout(function () {
               endTransit();
               // The real watermark (already showing this scene's art) takes
@@ -340,31 +478,21 @@
               setTimeout(function () { canvas.remove(); }, 420);
             }, scene.holdMs || 100);
           });
+          });
         };
 
-        var fromArt = flag.from || null;
-        var fromReady = fromArt
-          ? sampleArt(fromArt, count).catch(function () { return null; })
-          : Promise.resolve(null);
-
-        fromReady.then(function (fromArtPts) {
-          if (fromArtPts) {
-            var fromParticles = buildParticles(fromArtPts, canvas);
-            drawAtRest(canvas, fromParticles);
-            animateParticles(canvas, fromParticles, 'scatter', scene, function () {
-              targetReady
-                .then(function (art) { finish(scene, buildParticles(art, canvas)); })
-                .catch(function () { bail(canvas); });
+        fromDrawn.then(function (state) {
+          if (state) {
+            animateParticles(canvas, state.particles, 'scatter', scene, state.opacity, state.image, function () {
+              targetReady.then(finish).catch(bail);
             });
           } else {
             // Nothing to dissolve (first hop or unknown origin): just form.
-            targetReady
-              .then(function (art) { finish(scene, buildParticles(art, canvas)); })
-              .catch(function () { bail(canvas); });
+            targetReady.then(finish).catch(bail);
           }
         });
       })
-      .catch(function () { bail(null); });
+      .catch(bail);
   }
 
   // ── Interception ──
