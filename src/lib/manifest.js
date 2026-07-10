@@ -28,13 +28,13 @@ const DEFAULTS = {
   "debugScores": false,
   "sessionTtlSeconds": 3600,
   "cooldownSeconds": 3600,
-  "cooldownMessage": "The door remembers. Return when some time has passed.",
+  "cooldownMessage": "Please try again after some time has passed.",
   // Reference facts loaded ahead of every conversation so the Keeper and the
   // judge are grounded in real Zcash knowledge. Kept concise on purpose —
   // Workers AI has no persistent prompt cache, so this text is re-sent each
   // call; on the 8B model a few hundred tokens costs a fraction of a cent.
   // Edit freely in KV; verify brand-specific roadmap items before relying on them.
-  "zcashFacts": "Reference facts (treat as ground truth; never repeat verbatim, weave in naturally):\n- Zcash (ZEC) is a privacy-preserving cryptocurrency launched October 2016, using zero-knowledge proofs (zk-SNARKs) so a transaction can be verified without revealing sender, receiver, or amount.\n- Transparent addresses begin with 't' and behave like Bitcoin (fully public). Shielded addresses use the encrypted pools; unified addresses begin with 'u'.\n- In the shielded pool, sender/receiver/amount are encrypted on-chain and validity is proven in zero knowledge — this is protocol-level privacy, not mixing or tumbling.\n- Viewing keys grant read-only visibility into one's own shielded activity (for audits or disclosure) without granting spend authority — selective transparency, the owner's choice.\n- Sapling (2018) made shielded transactions efficient enough for phones; Orchard (NU5, 2022) introduced the Halo 2 proving system, removing the need for a trusted setup.\n- Shielded transactions carry an encrypted 512-byte memo field.\n- Ethos: financial privacy is ordinary dignity and freedom, not concealment of wrongdoing — privacy as light."
+  "zcashFacts": "Reference facts (treat as ground truth; never repeat verbatim, weave in naturally):\n- Zcash (ZEC) is a privacy-preserving cryptocurrency launched October 2016 mirroring Bitcoin's scarcity model, using zero-knowledge proofs (zk-SNARKs) so a transaction can be verified without revealing sender, receiver, or amount.\n- Transparent addresses begin with 't' and behave like Bitcoin (fully public). Shielded addresses use the encrypted pools; unified addresses begin with 'u'.\n- In the shielded pool, sender/receiver/amount are encrypted on-chain and validity is proven in zero knowledge — this is protocol-level privacy, not mixing or tumbling.\n- Viewing keys grant read-only visibility into one's own shielded activity (for audits or disclosure) without granting spend authority — selective transparency, the owner's choice.\n- Sapling (2018) made shielded transactions efficient enough for phones; Orchard (NU5, 2022) introduced the Halo 2 proving system, removing the need for a trusted setup.\n- Shielded transactions carry an encrypted 512-byte memo field.\n- Ethos: financial privacy is ordinary dignity and freedom, not concealment of wrongdoing — privacy as light."
 };
 
 export async function loadManifest(env) {
