@@ -79,6 +79,7 @@ const Terminal = (() => {
   }
 
   // Show prompt and wait for user input
+  let tapHintShown = false;
   function prompt(prefix) {
     prefix = prefix || '> ';
     return new Promise(resolve => {
@@ -88,6 +89,20 @@ const Terminal = (() => {
       hiddenInput.value = '';
       hiddenInput.focus();
       scrollBottom();
+
+      // Mobile browsers (iOS especially) refuse programmatic keyboards
+      // outside a user gesture. If our focus attempt was blocked, say so —
+      // once — and the existing tap-anywhere handler does the rest.
+      setTimeout(() => {
+        if (!tapHintShown && document.activeElement !== hiddenInput) {
+          tapHintShown = true;
+          const hint = document.createElement('div');
+          hint.className = 'line system';
+          hint.textContent = '(tap anywhere to speak)';
+          output.appendChild(hint);
+          scrollBottom();
+        }
+      }, 300);
 
       function onKey(e) {
         if (e.key === 'Enter') {

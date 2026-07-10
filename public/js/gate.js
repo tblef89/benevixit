@@ -22,12 +22,23 @@
 
   function getTurnstileToken(siteKey) {
     return new Promise((resolve) => {
-      const render = () =>
-        turnstile.render('#turnstile-slot', {
+      let widgetId = null;
+      // The token is single-use; once we have it the widget has no further
+      // purpose. Let its success state show for a beat, then remove it.
+      const dismiss = () => {
+        setTimeout(() => {
+          try { if (widgetId !== null) turnstile.remove(widgetId); } catch (e) {}
+          const slot = document.getElementById('turnstile-slot');
+          if (slot) slot.style.display = 'none';
+        }, 800);
+      };
+      const render = () => {
+        widgetId = turnstile.render('#turnstile-slot', {
           sitekey: siteKey,
-          callback: resolve,
+          callback: (token) => { resolve(token); dismiss(); },
           'error-callback': () => resolve(null),
         });
+      };
       if (window.turnstile) render();
       else window.onloadTurnstileCallback = render;
       // Fallback if the script tag loaded before we set the callback:
