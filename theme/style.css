@@ -52,12 +52,24 @@ a { color: var(--accent); }
 .bv-watermark {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
   background-color: var(--ink);
   opacity: var(--wm-opacity);
   -webkit-mask: url('/art/key.svg') no-repeat center / auto calc(var(--wm-height) * 1%);
   mask: url('/art/key.svg') no-repeat center / auto calc(var(--wm-height) * 1%);
+}
+
+/* Content sits explicitly above the watermark — no reliance on negative
+   z-index paint order, which WP/Woo stylesheets can disturb. */
+.bv-header, .bv-main, #site-footer { position: relative; z-index: 1; }
+
+/* Per-page art in pure CSS via the body class — works with JS disabled;
+   scenes.json still drives the transition particles. */
+.single-product .bv-watermark {
+  -webkit-mask-image: url('/art/hat_dark.svg');
+  mask-image: url('/art/hat_dark.svg');
+  opacity: 0.12;
 }
 
 /* ── Header: the brand line, nothing else ── */
