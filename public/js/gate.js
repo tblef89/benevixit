@@ -72,7 +72,15 @@
     T.scrollBottom();
   }
 
-  // ── Opening: the motto, given its due ──
+  // ── Opening: the printer's mark at the chapter head, then the motto ──
+  // The ornament sits above the epigraph, in the clear band above the
+  // watermark — lower placements collide with the background key's bow.
+  const fleuron = document.createElement('div');
+  fleuron.className = 'bv-fleuron';
+  fleuron.setAttribute('aria-hidden', 'true');
+  fleuron.appendChild(document.createElement('span'));
+  document.getElementById('output').appendChild(fleuron);
+
   const quote = document.createElement('blockquote');
   quote.className = 'quote';
   const qline = document.createElement('em');
@@ -86,14 +94,7 @@
   T.scrollBottom();
   await T.pause(500);
   await T.print('He lives well who conceals himself well.', 25);
-  // The printer's ornament closes the epigraph before the machinery begins.
-  const fleuron = document.createElement('div');
-  fleuron.className = 'bv-fleuron';
-  fleuron.setAttribute('aria-hidden', 'true');
-  fleuron.appendChild(document.createElement('span'));
-  document.getElementById('output').appendChild(fleuron);
-  T.scrollBottom();
-  await T.pause(400);
+  T.addLine('');
   await T.print('Verifying personhood.', 15);
 
   const cfg = await api('config');
