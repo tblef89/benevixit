@@ -24,7 +24,7 @@ const DEFAULTS = {
   "brevityLine": "There is beauty in brevity. Please shorten your response.",
   "passphrase": "BENEVIXIT",
   "grantTtlSeconds": 86400,
-  "checkoutUrl": "https://benevixit.com/product/herringbone-cap",
+  "checkoutUrl": "https://benevixit.com/product/herringbone-cap/",
   "debugScores": false,
   "sessionTtlSeconds": 3600,
   "cooldownSeconds": 3600,
