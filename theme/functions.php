@@ -26,8 +26,14 @@ add_action('wp_enqueue_scripts', function () {
     }
 });
 
+// The hat itself, engraved, standing in the arch's opening — the one object
+// in a drawn world. Rendered as an ink-masked raster (see .bv-hat).
+add_action('woocommerce_single_product_summary', function () {
+    echo '<div class="bv-hat" role="img" aria-label="The hat, engraved"></div>';
+}, 22);
+
 // The photographs live behind a quiet link instead of dominating the page —
-// the hat drawing carries the visual load. data-no-dissolve keeps the
+// the hat engraving carries the visual load. data-no-dissolve keeps the
 // navigation interceptor's hands off it.
 add_action('woocommerce_single_product_summary', function () {
     echo '<p class="bv-view-images-wrap"><a href="#" class="bv-view-images" data-no-dissolve>View the photographs</a></p>';

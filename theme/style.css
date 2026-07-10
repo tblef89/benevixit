@@ -110,11 +110,39 @@ a { color: var(--accent); }
 }
 
 /* Per-page art in pure CSS via the body class — works with JS disabled;
-   scenes.json still drives the transition particles. */
+   scenes.json still drives the transition particles. The visit moves through
+   stone: key at the gate, arch at the threshold, wall once inside. */
 .single-product .bv-watermark {
-  -webkit-mask-image: url('/art/hat_dark.svg');
-  mask-image: url('/art/hat_dark.svg');
-  opacity: 0.12;
+  -webkit-mask: url('/art/arch.svg') no-repeat center 30% / min(58%, 42rem) auto;
+  mask: url('/art/arch.svg') no-repeat center 30% / min(58%, 42rem) auto;
+  opacity: 0.14;
+}
+.woocommerce-cart .bv-watermark,
+.woocommerce-checkout .bv-watermark {
+  -webkit-mask: url('/art/wall.svg') no-repeat center / min(94%, 66rem) auto;
+  mask: url('/art/wall.svg') no-repeat center / min(94%, 66rem) auto;
+  opacity: 0.09;
+}
+@media (max-width: 700px) {
+  /* Narrow screens: the arch spans the page or it disappears behind the text. */
+  .single-product .bv-watermark {
+    -webkit-mask-size: 96% auto;
+    mask-size: 96% auto;
+    -webkit-mask-position: center 26%;
+    mask-position: center 26%;
+  }
+}
+
+/* The hat itself: the engraving as a raster alpha-mask painted in ink, so it
+   re-inks with the palette in both schemes. (The traced SVG is far too dense
+   to ship as vectors — 2,600 paths; the PNG is one 107KB image.) */
+.bv-hat {
+  width: min(300px, 68vw);
+  aspect-ratio: 1400 / 1250;
+  margin: 1.75rem auto 0;
+  background-color: var(--ink);
+  -webkit-mask: url('/art/hat.png') no-repeat center / contain;
+  mask: url('/art/hat.png') no-repeat center / contain;
 }
 
 /* ── Header: the brand line, nothing else ── */

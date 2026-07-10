@@ -34,3 +34,8 @@ workflow — no code changes to swap art, ever.
 - Flatten transforms on export (no `transform="matrix(...)"` on geometry).
 - Convert text to outlines.
 - Single color is ideal — particles are always drawn in ink.
+- **No background plate**: delete any full-canvas rectangle before export
+  (Illustrator traces often add one). The site paints art as an alpha mask,
+  and an opaque plate renders as a solid slab of ink instead of the drawing.
+- Center the drawing: the viewBox should hug the artwork (a viewBox much
+  larger than the drawing shifts it off-center on screen and in transitions).

@@ -12,17 +12,19 @@
     },
     {
       "match": "^/product/",
-      "art": "/art/hat_dark.svg",
-      "particles": 2000,
-      "wmOpacity": 0.12
+      "art": "/art/arch.svg",
+      "particles": 1600,
+      "wmOpacity": 0.14
     },
     {
       "match": "^/cart",
-      "art": "/art/key.svg"
+      "art": "/art/wall.svg",
+      "wmOpacity": 0.09
     },
     {
       "match": "^/checkout",
-      "art": "/art/key.svg"
+      "art": "/art/wall.svg",
+      "wmOpacity": 0.09
     }
   ]
 }
