@@ -4,7 +4,7 @@
 <meta charset="<?php bloginfo('charset'); ?>">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>.bv-covered body>:not(.bv-watermark){visibility:hidden}</style>
-<script>try{if(sessionStorage.getItem('bv-dissolving'))document.documentElement.classList.add('bv-covered')}catch(e){}</script>
+<script>try{var f=JSON.parse(sessionStorage.getItem('bv-dissolving')||'null');if(f&&f.t&&Date.now()-f.t<4000)document.documentElement.classList.add('bv-covered','bv-transit')}catch(e){}</script>
 <?php wp_head(); ?>
 </head>
 <body <?php body_class(); ?>>

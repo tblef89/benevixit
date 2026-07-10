@@ -1,18 +1,19 @@
 /**
- * dissolve.js — the key persists; the text just gets out of the way.
+ * dissolve.js — the art travels: the old page's watermark dissolves into
+ * ink particles that reform as the new page's watermark.
  *
- * Every page carries its scene's SVG as a fixed background watermark
- * (.bv-watermark). On departure only the content fades — the key stays put
- * through the navigation (the arriving page paints it immediately; the
- * covered state hides everything EXCEPT the watermark). Once the new page
- * is there, the key performs: it ignites and scatters into ink particles,
- * then reforms and settles back into place while the content fades in
- * around it. Cinematic by intent — the rebuild is allowed to continue after
- * the page is already readable.
+ * Departure records which art it leaves behind and fades only the content.
+ * The arriving page hides its own watermark from first paint (bv-transit),
+ * instantly redraws the PREVIOUS art from the session point-cache, scatters
+ * it, and forms the new art — whose sampling starts in parallel with the
+ * scatter. Same-art routes simply scatter and reform. Content fades in while
+ * the art is still forming; the rebuild may outlast the page load,
+ * deliberately.
  *
- * Scenes are content: SVGs in /art/, routes in /art/scenes.json. Missing or
- * malformed art degrades to a plain content fade — it can never break
- * navigation. Reduced motion and no-JS get plain navigation.
+ * Sampled outlines are cached in sessionStorage, so dense traced SVGs pay
+ * their geometry cost once per session, not per navigation. Scenes are
+ * content: SVGs in /art/, routes in /art/scenes.json. Any failure degrades
+ * to a plain content fade. Reduced motion and no-JS get plain navigation.
  */
 (function () {
   'use strict';
@@ -108,10 +109,25 @@
     return null;
   }
 
+  // ── Art sampling, cached per session ──
+  // Dense traced SVGs (thousands of paths) take seconds to measure; the
+  // resulting points are tiny. Pay the geometry cost once per session.
   var artCache = {};
+  function cacheKeyFor(url, count) { return 'bv-pts:' + url + ':' + count; }
+
   function sampleArt(url, count) {
-    var cacheKey = url + '|' + count;
-    if (artCache[cacheKey]) return Promise.resolve(artCache[cacheKey]);
+    var ck = cacheKeyFor(url, count);
+    if (artCache[ck]) return Promise.resolve(artCache[ck]);
+    try {
+      var stored = sessionStorage.getItem(ck);
+      if (stored) {
+        var parsed = JSON.parse(stored);
+        if (parsed && parsed.pts && parsed.pts.length) {
+          artCache[ck] = parsed;
+          return Promise.resolve(parsed);
+        }
+      }
+    } catch (e) {}
     return fetch(url)
       .then(function (r) {
         if (!r.ok) throw new Error('art ' + r.status);
@@ -149,12 +165,17 @@
             if (n < 1) return;
             for (var k = 0; k < n; k++) {
               var p = g.getPointAtLength((lens[i] * k) / n);
-              pts.push({ x: (p.x - minX - w / 2) / h, y: (p.y - minY - h / 2) / h });
+              // Round to 4 decimals: enough precision, smaller cache entries.
+              pts.push({
+                x: Math.round(((p.x - minX - w / 2) / h) * 1e4) / 1e4,
+                y: Math.round(((p.y - minY - h / 2) / h) * 1e4) / 1e4,
+              });
             }
           });
           if (!pts.length) throw new Error('no points');
           var result = { pts: pts };
-          artCache[cacheKey] = result;
+          artCache[ck] = result;
+          try { sessionStorage.setItem(ck, JSON.stringify(result)); } catch (e) {}
           return result;
         } finally {
           host.remove();
@@ -181,6 +202,17 @@
         delay: Math.random() * 0.3,
       };
     });
+  }
+
+  function drawAtRest(canvas, particles) {
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = ink();
+    ctx.globalAlpha = watermarkGeom().restOpacity;
+    for (var i = 0; i < particles.length; i++) {
+      ctx.fillRect(particles[i].hx, particles[i].hy, 2, 2);
+    }
+    ctx.globalAlpha = 1;
   }
 
   // 'scatter': home → far, igniting from rest opacity. 'form': far → home,
@@ -238,76 +270,101 @@
     requestAnimationFrame(frame);
   }
 
-  // ── Departure: content fades; the key does not move ──
+  // ── Departure: content fades; record which art we leave behind ──
   function maskedNavigate(go) {
     if (reduced) return go();
+    var fromArt = null;
+    var scenesReady = loadScenes().then(function (cfg) {
+      var scene = sceneFor(location.pathname, cfg);
+      if (scene && scene.art) fromArt = scene.art;
+    }).catch(function () {});
     fadeContent(0, FADE_MS, function () {
-      try { sessionStorage.setItem(KEY, String(Date.now())); } catch (e) {}
-      go();
+      scenesReady.then(function () {
+        try {
+          sessionStorage.setItem(KEY, JSON.stringify({ t: Date.now(), from: fromArt }));
+        } catch (e) {}
+        go();
+      });
     });
   }
 
-  // ── Arrival: key already painted; it performs, content joins ──
+  // ── Arrival: previous art dissolves, this page's art forms ──
+  function endTransit() {
+    document.documentElement.classList.remove('bv-covered', 'bv-transit');
+  }
+
   function arriving() {
-    var stamp = null;
+    var flag = null;
     try {
-      stamp = sessionStorage.getItem(KEY);
+      flag = JSON.parse(sessionStorage.getItem(KEY) || 'null');
       sessionStorage.removeItem(KEY);
     } catch (e) {}
-    var fresh = stamp && Date.now() - Number(stamp) < 4000;
+    var fresh = flag && flag.t && Date.now() - Number(flag.t) < 4000;
     if (!fresh || reduced) {
-      document.documentElement.classList.remove('bv-covered');
+      endTransit();
       return;
     }
 
-    // The covered state already hides everything except the watermark.
-    // Pin content at opacity 0, then lift the class — key stays visible.
+    // Content pinned invisible; watermark stays hidden (bv-transit) until
+    // the particle performance hands back to the real element.
     contentChildren().forEach(function (el) { el.style.opacity = '0'; });
     document.documentElement.classList.remove('bv-covered');
 
-    var wm = document.querySelector('.bv-watermark');
-    var finish = function (canvas) {
-      if (wm) wm.style.visibility = '';
+    var bail = function (canvas) {
+      endTransit();
       if (canvas) canvas.remove();
+      fadeContent(1, FADE_MS + 100, null);
     };
 
     loadScenes()
       .then(function (cfg) {
         var scene = sceneFor(location.pathname, cfg);
-        if (!scene || !scene.art || !wm) {
-          return fadeContent(1, FADE_MS + 100, null);
-        }
+        if (!scene || !scene.art) return bail(null);
         applyScene(scene);
-        return sampleArt(scene.art, scene.particles || 1400)
-          .then(function (art) {
-            var canvas = makeCanvas();
-            var particles = buildParticles(art, canvas);
-            // Take over from the real watermark seamlessly: draw the copy at
-            // rest in place, hide the original, then perform.
-            var ctx = canvas.getContext('2d');
-            ctx.fillStyle = ink();
-            ctx.globalAlpha = watermarkGeom().restOpacity;
-            particles.forEach(function (p) { ctx.fillRect(p.hx, p.hy, 2, 2); });
-            ctx.globalAlpha = 1;
-            wm.style.visibility = 'hidden';
-            animateParticles(canvas, particles, 'scatter', scene, function () {
-              // Content fades in while the key is still reforming — the
-              // rebuild may outlast the page load, deliberately.
-              fadeContent(1, scene.formMs || 1400, null);
-              animateParticles(canvas, particles, 'form', scene, function () {
-                setTimeout(function () { finish(canvas); }, scene.holdMs || 100);
-              });
-            });
-          })
-          .catch(function () {
-            finish(null);
-            fadeContent(1, FADE_MS + 100, null);
+
+        var canvas = makeCanvas();
+        var count = scene.particles || 1400;
+        // Start measuring the destination art immediately — it runs while
+        // the previous art scatters.
+        var targetReady = sampleArt(scene.art, count);
+
+        var finish = function (formScene, targetParticles) {
+          fadeContent(1, formScene.formMs || 1400, null);
+          animateParticles(canvas, targetParticles, 'form', formScene, function () {
+            setTimeout(function () {
+              endTransit();
+              // The real watermark (already showing this scene's art) takes
+              // over; crossfade the particle copy away.
+              canvas.style.transition = 'opacity 300ms linear';
+              canvas.style.opacity = '0';
+              setTimeout(function () { canvas.remove(); }, 320);
+            }, scene.holdMs || 100);
           });
+        };
+
+        var fromArt = flag.from || null;
+        var fromReady = fromArt
+          ? sampleArt(fromArt, count).catch(function () { return null; })
+          : Promise.resolve(null);
+
+        fromReady.then(function (fromArtPts) {
+          if (fromArtPts) {
+            var fromParticles = buildParticles(fromArtPts, canvas);
+            drawAtRest(canvas, fromParticles);
+            animateParticles(canvas, fromParticles, 'scatter', scene, function () {
+              targetReady
+                .then(function (art) { finish(scene, buildParticles(art, canvas)); })
+                .catch(function () { bail(canvas); });
+            });
+          } else {
+            // Nothing to dissolve (first hop or unknown origin): just form.
+            targetReady
+              .then(function (art) { finish(scene, buildParticles(art, canvas)); })
+              .catch(function () { bail(canvas); });
+          }
+        });
       })
-      .catch(function () {
-        finish(null);
-        fadeContent(1, FADE_MS + 100, null);
-      });
+      .catch(function () { bail(null); });
   }
 
   // ── Interception ──
@@ -346,7 +403,7 @@
 
   addEventListener('pageshow', function (e) {
     if (e.persisted) {
-      document.documentElement.classList.remove('bv-covered');
+      endTransit();
       var wm = document.querySelector('.bv-watermark');
       if (wm) wm.style.visibility = '';
       contentChildren().forEach(function (el) {
@@ -360,8 +417,7 @@
   // Keep the persistent watermark in sync with scenes.json.
   function syncWatermark() {
     loadScenes().then(function (cfg) {
-      var scene = sceneFor(location.pathname, cfg);
-      applyScene(scene);
+      applyScene(sceneFor(location.pathname, cfg));
     });
   }
 

@@ -64,6 +64,9 @@ html { background: var(--paper); }
   -webkit-mask: url('/art/key.svg') no-repeat center / auto calc(var(--wm-height) * 1%);
   mask: url('/art/key.svg') no-repeat center / auto calc(var(--wm-height) * 1%);
 }
+/* During a transition the particle copy performs; the real element waits. */
+.bv-transit .bv-watermark { visibility: hidden; }
+
 
 .line { white-space: pre-wrap; word-break: break-word; min-height: 1.6em; }
 
