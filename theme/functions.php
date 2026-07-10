@@ -12,11 +12,17 @@ add_action('after_setup_theme', function () {
 });
 
 add_action('wp_enqueue_scripts', function () {
-    wp_enqueue_style('benevixit', get_stylesheet_uri(), [], wp_get_theme()->get('Version'));
+    // Version assets by file mtime: every `git pull` on the box busts every
+    // cache (browser and Cloudflare edge) automatically. A static theme
+    // version left day-old stylesheets pinned at ?ver=1.0.
+    $dir = get_stylesheet_directory();
+    $css_ver = @filemtime($dir . '/style.css') ?: wp_get_theme()->get('Version');
+    wp_enqueue_style('benevixit', get_stylesheet_uri(), [], $css_ver);
     // Masked-navigation dissolve, served same-origin by the Worker.
     wp_enqueue_script('bv-dissolve', '/js/dissolve.js', [], null, ['strategy' => 'defer', 'in_footer' => false]);
     if (is_product()) {
-        wp_enqueue_script('bv-shop', get_template_directory_uri() . '/shop.js', [], wp_get_theme()->get('Version'), true);
+        $js_ver = @filemtime($dir . '/shop.js') ?: wp_get_theme()->get('Version');
+        wp_enqueue_script('bv-shop', get_template_directory_uri() . '/shop.js', [], $js_ver, true);
     }
 });
 
