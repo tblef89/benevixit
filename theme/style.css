@@ -175,6 +175,80 @@ a { color: var(--accent); }
 .woocommerce .quantity .qty { width: 4.5rem; text-align: center; }
 .woocommerce form .form-row label { color: var(--ink-soft); font-size: 0.8rem; }
 
+/* ── Single product: centered, quiet, the hat behind everything ── */
+.single-product .woocommerce div.product {
+  display: block;
+  max-width: 34rem;
+  margin: 0 auto;
+  text-align: center;
+  padding-top: 8vh;
+}
+.single-product div.product div.images,
+.single-product .woocommerce-product-gallery { display: none !important; }
+.single-product div.product .product_title { font-size: 1.7rem; }
+.single-product div.product p.price { font-size: 1.15rem; margin: 0.5rem 0 0.25rem; }
+.single-product div.product .woocommerce-product-details__short-description {
+  max-width: 28rem;
+  margin: 0.75rem auto 0;
+}
+.bv-view-images-wrap { margin: 1rem 0 0; }
+.bv-view-images {
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.bv-view-images:hover { color: var(--accent); }
+.single-product div.product form.cart {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+}
+.single-product div.product form.cart .quantity { display: none; }
+/* Less a button, more a selection: bare text, a hairline underneath. */
+.single-product div.product form.cart button.button {
+  background: transparent !important;
+  color: var(--ink) !important;
+  border: none !important;
+  border-bottom: 1px solid var(--ink) !important;
+  border-radius: 0 !important;
+  padding: 0.3rem 0.4rem !important;
+  font-size: 1.1rem !important;
+  letter-spacing: 0.14em;
+}
+.single-product div.product form.cart button.button:hover {
+  background: transparent !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+.single-product .bv-description { text-align: center; margin: 2rem auto 0; }
+
+/* ── Lightbox for the photographs ── */
+.bv-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483100;
+  background: rgba(35, 32, 26, 0.93);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.bv-lightbox figure { max-width: 92vw; max-height: 92vh; text-align: center; }
+.bv-lightbox img { max-width: 92vw; max-height: 84vh; object-fit: contain; }
+.bv-lightbox .bv-count { color: #efe9dd; font-size: 0.85rem; margin-top: 0.6rem; }
+.bv-lightbox .bv-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 1.25rem;
+  font-size: 2.2rem;
+  background: none;
+  border: none;
+  color: #efe9dd;
+  cursor: pointer;
+}
+
 /* ── Cart + checkout tables ── */
 .woocommerce table.shop_table {
   border: 1px solid var(--line) !important;

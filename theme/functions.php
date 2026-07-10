@@ -15,7 +15,17 @@ add_action('wp_enqueue_scripts', function () {
     wp_enqueue_style('benevixit', get_stylesheet_uri(), [], wp_get_theme()->get('Version'));
     // Masked-navigation dissolve, served same-origin by the Worker.
     wp_enqueue_script('bv-dissolve', '/js/dissolve.js', [], null, ['strategy' => 'defer', 'in_footer' => false]);
+    if (is_product()) {
+        wp_enqueue_script('bv-shop', get_template_directory_uri() . '/shop.js', [], wp_get_theme()->get('Version'), true);
+    }
 });
+
+// The photographs live behind a quiet link instead of dominating the page —
+// the hat drawing carries the visual load. data-no-dissolve keeps the
+// navigation interceptor's hands off it.
+add_action('woocommerce_single_product_summary', function () {
+    echo '<p class="bv-view-images-wrap"><a href="#" class="bv-view-images" data-no-dissolve>View the photographs</a></p>';
+}, 25);
 
 // Strip the product page to essentials: no tabs, no related/upsells, no
 // breadcrumbs, no category meta.

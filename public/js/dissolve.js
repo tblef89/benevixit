@@ -27,10 +27,26 @@
   }
   function ink() { return cssVar('--ink', '#23201a'); }
   function watermarkGeom() {
+    var rest = null;
+    var el = document.querySelector('.bv-watermark');
+    if (el) {
+      var o = parseFloat(getComputedStyle(el).opacity);
+      if (isFinite(o) && o > 0) rest = o;
+    }
     return {
       heightFrac: (parseFloat(cssVar('--wm-height', '72')) || 72) / 100,
-      restOpacity: parseFloat(cssVar('--wm-opacity', '0.07')) || 0.07,
+      restOpacity: rest || parseFloat(cssVar('--wm-opacity', '0.07')) || 0.07,
     };
+  }
+
+  function applyScene(scene) {
+    var el = document.querySelector('.bv-watermark');
+    if (!el || !scene) return;
+    if (scene.art) {
+      el.style.webkitMaskImage = 'url(' + scene.art + ')';
+      el.style.maskImage = 'url(' + scene.art + ')';
+    }
+    if (scene.wmOpacity) el.style.opacity = String(scene.wmOpacity);
   }
 
   function makeCanvas() {
@@ -129,7 +145,8 @@
           var pts = [];
           geos.forEach(function (g, i) {
             if (!lens[i]) return;
-            var n = Math.max(2, Math.round(count * (lens[i] / total)));
+            var n = Math.round(count * (lens[i] / total));
+            if (n < 1) return;
             for (var k = 0; k < n; k++) {
               var p = g.getPointAtLength((lens[i] * k) / n);
               pts.push({ x: (p.x - minX - w / 2) / h, y: (p.y - minY - h / 2) / h });
@@ -260,6 +277,7 @@
         if (!scene || !scene.art || !wm) {
           return fadeContent(1, FADE_MS + 100, null);
         }
+        applyScene(scene);
         return sampleArt(scene.art, scene.particles || 1400)
           .then(function (art) {
             var canvas = makeCanvas();
@@ -343,11 +361,7 @@
   function syncWatermark() {
     loadScenes().then(function (cfg) {
       var scene = sceneFor(location.pathname, cfg);
-      var el = document.querySelector('.bv-watermark');
-      if (el && scene && scene.art) {
-        el.style.webkitMaskImage = 'url(' + scene.art + ')';
-        el.style.maskImage = 'url(' + scene.art + ')';
-      }
+      applyScene(scene);
     });
   }
 
