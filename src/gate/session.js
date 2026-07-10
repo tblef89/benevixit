@@ -9,6 +9,7 @@
 import { loadManifest } from '../lib/manifest.js';
 import { judgeTranscript, decideVerdict } from './judge.js';
 import { mintGrant } from './grant.js';
+import { sanitizeMessage } from '../lib/sanitize.js';
 
 export class GateSession {
   constructor(ctx, env) {
@@ -25,10 +26,16 @@ export class GateSession {
     return Response.json({ ok: false, error: { code: 'not_found' } }, { status: 404 });
   }
 
-  async handleMessage(message) {
+  async handleMessage(rawMessage) {
     const manifest = await loadManifest(this.env);
 
-    if (message.length > manifest.maxMessageChars) {
+    if (rawMessage.length > manifest.maxMessageChars) {
+      return this.reply({ reply: manifest.brevityLine, passed: false });
+    }
+    // Neutralise forged role labels / control chars before the text enters
+    // the transcript the chat model and judge both read.
+    const message = sanitizeMessage(rawMessage);
+    if (!message) {
       return this.reply({ reply: manifest.brevityLine, passed: false });
     }
 
@@ -50,9 +57,10 @@ export class GateSession {
     transcript.push({ role: 'user', content: message });
 
     const teaching = (await this.ctx.storage.get('teaching')) || false;
+    const facts = manifest.zcashFacts ? `${manifest.zcashFacts}\n\n` : '';
     const system = teaching
-      ? `${manifest.persona}\n\n${manifest.teachAddendum}`
-      : manifest.persona;
+      ? `${facts}${manifest.persona}\n\n${manifest.teachAddendum}`
+      : `${facts}${manifest.persona}`;
 
     // Chat and judge run in parallel: the judge scores the VISITOR's words,
     // so it doesn't need the Keeper's new reply. Halves judged-turn latency.

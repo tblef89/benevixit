@@ -28,5 +28,6 @@
   "exhaustedLine": "I am sorry; I cannot let you through. Study Zcash and return.",
   "brevityLine": "There is beauty in brevity. Please shorten your response.",
   "cooldownSeconds": 3600,
-  "cooldownMessage": "The door remembers. Return when some time has passed."
+  "cooldownMessage": "The door remembers. Return when some time has passed.",
+  "zcashFacts": "Reference facts (treat as ground truth; never repeat verbatim, weave in naturally):\n- Zcash (ZEC) is a privacy-preserving cryptocurrency launched October 2016, using zero-knowledge proofs (zk-SNARKs) so a transaction can be verified without revealing sender, receiver, or amount.\n- Transparent addresses begin with 't' and behave like Bitcoin (fully public). Shielded addresses use the encrypted pools; unified addresses begin with 'u'.\n- In the shielded pool, sender/receiver/amount are encrypted on-chain and validity is proven in zero knowledge \u2014 this is protocol-level privacy, not mixing or tumbling.\n- Viewing keys grant read-only visibility into one's own shielded activity (for audits or disclosure) without granting spend authority \u2014 selective transparency, the owner's choice.\n- Sapling (2018) made shielded transactions efficient enough for phones; Orchard (NU5, 2022) introduced the Halo 2 proving system, removing the need for a trusted setup.\n- Shielded transactions carry an encrypted 512-byte memo field.\n- Ethos: financial privacy is ordinary dignity and freedom, not concealment of wrongdoing \u2014 privacy as light."
 }
