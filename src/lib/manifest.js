@@ -19,7 +19,7 @@ const DEFAULTS = {
   "passThreshold": { "sincerity": 5, "knowledge": 3, "values": 3 },
   "teachThreshold": { "sincerity": 7 },
   "passLine": "Welcome. You belong.",
-  "doorLine": "The door opens.",
+  "doorLine": "Enter here.",
   "exhaustedLine": "I am sorry; I cannot let you through. Study Zcash and return.",
   "brevityLine": "There is beauty in brevity. Please shorten your response.",
   "passphrase": "BENEVIXIT",
