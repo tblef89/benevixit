@@ -12,7 +12,9 @@
     },
     {
       "match": "^/product/",
-      "art": "/art/key.svg"
+      "art": "/art/hat_dark.svg",
+      "particles": 2000,
+      "wmOpacity": 0.05
     },
     {
       "match": "^/cart",
