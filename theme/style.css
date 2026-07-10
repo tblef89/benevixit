@@ -59,6 +59,9 @@ a { color: var(--accent); }
   -webkit-mask: url('/art/key.svg') no-repeat center / auto calc(var(--wm-height) * 1%);
   mask: url('/art/key.svg') no-repeat center / auto calc(var(--wm-height) * 1%);
 }
+/* During a transition the particle copy performs; the real element waits. */
+.bv-transit .bv-watermark { visibility: hidden; }
+
 
 /* Content sits explicitly above the watermark — no reliance on negative
    z-index paint order, which WP/Woo stylesheets can disturb. */
