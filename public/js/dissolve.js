@@ -26,7 +26,7 @@
     var v = getComputedStyle(document.documentElement).getPropertyValue(name);
     return (v && v.trim()) || fallback;
   }
-  function ink() { return cssVar('--ink', '#23201a'); }
+  function ink() { return cssVar('--ink', '#2c2822'); }
   function watermarkGeom() {
     var rest = null;
     var el = document.querySelector('.bv-watermark');
