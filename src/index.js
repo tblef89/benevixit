@@ -35,7 +35,12 @@ function clientIp(request) {
 async function proxyToShop(request, env) {
   const url = new URL(request.url);
   url.hostname = new URL(env.SHOP_ORIGIN).hostname;
-  return fetch(new Request(url, request), { redirect: 'manual' });
+  const proxied = new Request(url, request);
+  // Stamp proxy traffic so the origin's canonical-host redirect (which
+  // bounces direct shop.benevixit.com visits back to benevixit.com)
+  // knows to leave Worker requests alone.
+  proxied.headers.set('X-BV-Proxy', '1');
+  return fetch(proxied, { redirect: 'manual' });
 }
 
 export default {
