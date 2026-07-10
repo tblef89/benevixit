@@ -29,14 +29,14 @@ export class GateSession {
     const manifest = await loadManifest(this.env);
 
     if (message.length > manifest.maxMessageChars) {
-      return this.reply({ reply: 'fewer words. try again.', passed: false });
+      return this.reply({ reply: 'There is beautfy in brevity. Please shorten your response.', passed: false });
     }
 
     const transcript = (await this.ctx.storage.get('transcript')) || [];
     const turns = transcript.filter((m) => m.role === 'user').length;
     if (turns >= manifest.maxTurns) {
       return this.reply({
-        reply: 'we have spoken enough for one visit. come back when something has changed.',
+        reply: 'I am sorry; I cannot let you through. Study Zcash and return.',
         passed: false,
         exhausted: true,
       });
