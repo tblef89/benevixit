@@ -88,15 +88,15 @@ html {
 
 .line { white-space: pre-wrap; word-break: break-word; min-height: 1.6em; }
 
-/* The printer's ornament: the key at 16px between major moments, flanked by
-   hairlines — the way a fine book breathes between chapters. One mark, used
-   with discipline; restraint is the flourish. */
+/* The printer's ornament: the key at 18px between hairlines, at the chapter
+   head above the epigraph — the clear band before the watermark begins. One
+   mark, used with discipline; restraint is the flourish. */
 .bv-fleuron {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  margin: 1.75rem auto;
+  margin: 0 auto 1.75rem;
 }
 .bv-fleuron::before,
 .bv-fleuron::after {
