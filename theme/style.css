@@ -176,7 +176,7 @@ a { color: var(--accent); }
 .woocommerce form .form-row label { color: var(--ink-soft); font-size: 0.8rem; }
 
 /* ── Single product: centered, quiet, the hat behind everything ── */
-.single-product .woocommerce div.product {
+.single-product div.product {
   display: block;
   max-width: 34rem;
   margin: 0 auto;

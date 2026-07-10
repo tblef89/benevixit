@@ -14,7 +14,7 @@
       "match": "^/product/",
       "art": "/art/hat_dark.svg",
       "particles": 2000,
-      "wmOpacity": 0.05
+      "wmOpacity": 0.12
     },
     {
       "match": "^/cart",
