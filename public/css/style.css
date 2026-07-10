@@ -11,31 +11,47 @@
   font-weight: 300 700;
   font-display: swap;
 }
+@font-face {
+  font-family: 'Cormorant Garamond';
+  src: url('/fonts/CormorantGaramond-Italic-VariableFont_wght.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: italic;
+  font-display: swap;
+}
 
 /* bene vixit — paper terminal.
    privacy = light: warm paper, dark ink. not another green-on-black cave. */
 
 :root {
-  --paper: #faf7f0;
-  --ink: #23201a;
+  --paper: #f3ede2; /* undyed linen, not cream */
+  --ink: #2c2822; /* espresso — never black; black is a screen, this is print */
+  --ink-body: #4a4438; /* running text sits a step softer than headings */
   --ink-soft: #6b6459;
-  --accent: #8a6d1f; /* old gold */
+  --accent: #9a7f52; /* patina, not coin */
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
   height: 100%;
-  color: var(--ink);
+  color: var(--ink-body);
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-weight: 500;
   font-size: 18px;
   line-height: 1.6;
+  /* Oldstyle figures: digits sit on the baseline with ascenders and
+     descenders, the way a book sets them — not the way a screen renders them. */
+  font-feature-settings: 'onum' 1, 'liga' 1;
 }
 
 /* Background on html ONLY: a body background paints OVER negative-z children,
-   which would hide the watermark behind solid paper. */
-html { background: var(--paper); }
+   which would hide the watermark behind solid paper.
+   The grain layer is a tiling SVG noise at ~4% — imperceptible consciously,
+   but the eye registers "material" instead of a flat hex fill. */
+html {
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+}
 
 #terminal, #site-footer, .page {
   position: relative;
@@ -91,8 +107,18 @@ html { background: var(--paper); }
 .copyable.copied { color: var(--accent); }
 
 #input-line { white-space: pre-wrap; word-break: break-word; }
-.cursor { animation: blink 1.1s steps(1) infinite; color: var(--accent); }
-@keyframes blink { 50% { opacity: 0; } }
+/* Not a blinking DOS block — a thin caret with a slow breath, someone
+   composing a letter rather than a machine awaiting input. */
+.cursor {
+  display: inline-block;
+  width: 1.5px;
+  height: 1.15em;
+  margin-left: 1px;
+  vertical-align: -0.18em;
+  background: var(--accent);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+@keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
 
 #hidden-input {
   position: fixed;
@@ -139,9 +165,10 @@ a { color: var(--accent); }
   margin: 0 auto;
   padding: 3rem 1.25rem 6rem;
 }
-.page h1 { font-family: 'Cinzel', serif; font-size: 1.2rem; margin-bottom: 1.5rem; letter-spacing: 0.06em; }
+/* Inscriptional capitals want air between them — carved, not typed. */
+.page h1 { font-family: 'Cinzel', serif; font-size: 1.2rem; margin-bottom: 1.5rem; letter-spacing: 0.14em; }
 .page h2 { font-size: 0.95rem; margin: 1.5rem 0 0.5rem; color: var(--accent); }
-.page p, .page li { margin-bottom: 0.75rem; color: var(--ink); }
+.page p, .page li { margin-bottom: 0.75rem; color: var(--ink-body); }
 .page ul { padding-left: 1.25rem; }
 .page .back { display: inline-block; margin-bottom: 2rem; }
 
@@ -150,7 +177,8 @@ a { color: var(--accent); }
   :root {
     --paper: #201d17;
     --ink: #ece6da;
+    --ink-body: #cfc7b8;
     --ink-soft: #a89f8f;
-    --accent: #d4af37;
+    --accent: #b9a26e; /* the patina holds at dusk too — no coin */
   }
 }
