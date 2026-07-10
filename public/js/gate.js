@@ -105,7 +105,7 @@
     await T.print(session.error.message, 30);
     return;
   }
-  const { sessionId, opening } = session.data;
+  const { sessionId, sessionToken, opening } = session.data;
 
   T.addLine('');
   await T.print(opening, 35);
@@ -143,7 +143,7 @@
 
     let result;
     if (input.startsWith('/word ')) {
-      result = await apiWithPulse('passphrase', { phrase: input.slice(6) });
+      result = await apiWithPulse('passphrase', { sessionId, sessionToken, phrase: input.slice(6) });
       if (!result.ok) {
         await T.print(result.error.message, 35);
         continue;
@@ -151,7 +151,7 @@
       return grantReceived(result.data);
     }
 
-    result = await apiWithPulse('message', { sessionId, message: input });
+    result = await apiWithPulse('message', { sessionId, sessionToken, message: input });
     if (!result.ok) {
       await T.print(result.error.message, 35);
       if (result.error.code === 'rate_limited') await T.pause(2000);

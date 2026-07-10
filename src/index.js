@@ -17,6 +17,11 @@ import { GateSession } from './gate/session.js';
 import { verifyTurnstile } from './lib/turnstile.js';
 import { loadManifest } from './lib/manifest.js';
 import { tryPassphrase } from './gate/passphrase.js';
+import { mintSessionToken, verifySessionToken, proxyToken } from './lib/sign.js';
+
+// Hard ceiling on any incoming message, independent of the KV manifest —
+// rejects abusive payloads at the edge before they reach a Durable Object.
+const MAX_MESSAGE_BYTES = 4000;
 
 export { GateSession };
 
@@ -38,10 +43,11 @@ async function proxyToShop(request, env) {
   const url = new URL(request.url);
   url.hostname = originHost;
   const proxied = new Request(url, request);
-  // Stamp proxy traffic so the origin's canonical-host redirect (which
-  // bounces direct shop.benevixit.com visits back to benevixit.com)
-  // knows to leave Worker requests alone.
-  proxied.headers.set('X-BV-Proxy', '1');
+  // Stamp proxy traffic with a secret handshake token (derived from
+  // GRANT_SECRET, which the mu-plugin already shares) so the origin's
+  // canonical-host redirect leaves Worker requests alone and a bot hitting
+  // shop.benevixit.com directly cannot forge the exemption.
+  proxied.headers.set('X-BV-Proxy', await proxyToken(env.GRANT_SECRET));
   const res = await fetch(proxied, { redirect: 'manual' });
   // WordPress builds redirects (e.g. its canonical trailing-slash 301)
   // from the host it received — the origin's. Rewrite Location headers
@@ -81,7 +87,6 @@ export default {
         return ok({
           turnstileSiteKey: env.TURNSTILE_SITE_KEY,
           debugScores: manifest.debugScores === true,
-          minTurnsBeforeJudge: manifest.minTurnsBeforeJudge,
         });
       }
       if (request.method !== 'POST') {
@@ -134,9 +139,21 @@ async function createSession(body, request, env) {
   const human = await verifyTurnstile(env.TURNSTILE_SECRET, body.turnstileToken, ip);
   if (!human) return err('turnstile_failed', 'Could not verify you are a person.', 403);
 
+  // Bind conversation access to having passed Turnstile: mint a signed,
+  // short-lived session token. /gate/message and /gate/passphrase require it,
+  // so no one can skip the human check by inventing a session id.
   const sessionId = crypto.randomUUID();
+  const sessionToken = await mintSessionToken(env.GRANT_SECRET, sessionId, manifest.sessionTtlSeconds);
   // The DO is created lazily on first message; the opening line is static config.
-  return ok({ sessionId, opening: manifest.opening, maxTurns: manifest.maxTurns });
+  return ok({ sessionId, sessionToken, opening: manifest.opening, maxTurns: manifest.maxTurns });
+}
+
+// Verify the caller holds a valid session token bound to the claimed id.
+async function requireSession(body, env) {
+  const { sessionId, sessionToken } = body;
+  if (typeof sessionId !== 'string' || !/^[0-9a-f-]{36}$/.test(sessionId)) return null;
+  if (!(await verifySessionToken(env.GRANT_SECRET, sessionToken, sessionId))) return null;
+  return sessionId;
 }
 
 async function relayToSession(body, request, env, path) {
@@ -144,12 +161,15 @@ async function relayToSession(body, request, env, path) {
   const { success } = await env.MESSAGE_RL.limit({ key: ip });
   if (!success) return err('rate_limited', 'Slow down.', 429);
 
-  const { sessionId, message } = body;
-  if (typeof sessionId !== 'string' || !/^[0-9a-f-]{36}$/.test(sessionId)) {
-    return err('bad_session', 'Invalid session.');
-  }
+  const sessionId = await requireSession(body, env);
+  if (!sessionId) return err('bad_session', 'Verify yourself at the door first.', 403);
+
+  const { message } = body;
   if (typeof message !== 'string' || !message.trim()) {
     return err('empty_message', 'Say something.');
+  }
+  if (message.length > MAX_MESSAGE_BYTES) {
+    return err('too_long', 'Fewer words.', 413);
   }
 
   const stub = env.GATE_SESSION.get(env.GATE_SESSION.idFromName(sessionId));
@@ -178,6 +198,11 @@ async function passphrase(body, request, env) {
   const ip = clientIp(request);
   const { success } = await env.MESSAGE_RL.limit({ key: ip });
   if (!success) return err('rate_limited', 'Slow down.', 429);
+
+  // Passphrase attempts require a valid session token too, so the endpoint
+  // sits behind Turnstile + per-IP limits — no unauthenticated brute force.
+  const sessionId = await requireSession(body, env);
+  if (!sessionId) return err('bad_session', 'Verify yourself at the door first.', 403);
 
   const result = await tryPassphrase(env, body.phrase);
   if (!result) return err('wrong_word', 'That is not the word.', 403);

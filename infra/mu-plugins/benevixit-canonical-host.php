@@ -13,9 +13,25 @@
 
 defined('ABSPATH') || exit;
 
+/**
+ * The Worker stamps proxied requests with a secret handshake token derived
+ * from the shared grant secret. Compute the same token; only a request
+ * bearing it is treated as genuine Worker proxy traffic.
+ */
+function bv_expected_proxy_token() {
+    if (!defined('BV_GRANT_SECRET')) {
+        return null;
+    }
+    $raw = hash_hmac('sha256', 'bv-proxy-v1', BV_GRANT_SECRET, true);
+    $b64 = rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+    return substr($b64, 0, 32);
+}
+
 add_action('init', function () {
-    if (!empty($_SERVER['HTTP_X_BV_PROXY'])) {
-        return; // the Worker fetching its origin — never redirect
+    $expected = bv_expected_proxy_token();
+    $presented = $_SERVER['HTTP_X_BV_PROXY'] ?? '';
+    if ($expected !== null && $presented !== '' && hash_equals($expected, $presented)) {
+        return; // genuine Worker proxy traffic — never redirect
     }
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
         return; // webhooks and form posts must land where they were aimed
