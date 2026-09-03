@@ -528,16 +528,24 @@ body::after {
    lamp is lit. Even then it stays warm — dusk, not a basement. The media
    query below is the no-JS fallback for the same palette. */
 html.bv-night {
-  --paper: #201d17;
+  /* The room is dark; the paper is still paper. A warm umber sheet, lit
+     by the lamp below, with the grain tinted by lamplight rather than
+     flecked white. */
+  --paper: #2b251d;
   --ink: #ece6da;
   --ink-body: #cfc7b8;
   --ink-soft: #a89f8f;
   --accent: #b9a26e;
   --line: #3a342a;
-  --emboss-hi: rgba(255, 236, 200, calc(0.24 * var(--relief)));
-  --emboss-lo: rgba(0, 0, 0, calc(0.55 * var(--relief)));
-  --press-hi: rgba(255, 240, 210, 0.09);
+  --emboss-hi: rgba(255, 226, 180, calc(0.26 * var(--relief)));
+  --emboss-lo: rgba(0, 0, 0, calc(0.5 * var(--relief)));
+  --press-hi: rgba(255, 236, 200, 0.1);
   color-scheme: dark;
+  --paper-fibre-hi: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='512'%20height='512'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.11'%20numOctaves='5'%20seed='7'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%201%200%200%200%200%200.88%200%200%200%200%200.68%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200.04%200.15'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  --paper-fibre-lo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='512'%20height='512'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.11'%20numOctaves='5'%20seed='7'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200.05%200.19'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  --paper-tooth-hi: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='240'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.95'%20numOctaves='2'%20seed='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%201%200%200%200%200%200.9%200%200%200%200%200.72%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200%200%200.11'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  --paper-tooth-lo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='240'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.95'%20numOctaves='2'%20seed='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200%200%200.14'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  --paper-cloud: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1024'%20height='1024'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.006'%20numOctaves='3'%20seed='11'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200.03%200.07'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
 }
 html.bv-night body::after {
   background:
@@ -546,11 +554,28 @@ html.bv-night body::after {
     var(--paper-fibre-lo) calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5) / 512px 512px,
     var(--paper-fibre-hi) 0 0 / 512px 512px,
     var(--paper-cloud) 0 0 / 1024px 1024px,
-    radial-gradient(90% 70% at var(--light-x) var(--light-y),
-      rgba(255, 196, 120, 0.14) 0%,
-      rgba(255, 196, 120, 0) 60%),
-    linear-gradient(to top, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.24) 100%);
+    /* The lamp: a generous warm pool low on the page, the sheet visibly
+       cream where the light falls, falling off into the dark of the room
+       toward the far corner. */
+    radial-gradient(120% 100% at var(--light-x) var(--light-y),
+      rgba(255, 200, 128, 0.34) 0%,
+      rgba(255, 190, 115, 0.16) 38%,
+      rgba(255, 180, 100, 0) 72%),
+    radial-gradient(90% 80% at 8% 4%,
+      rgba(0, 0, 0, 0.32) 0%,
+      rgba(0, 0, 0, 0) 62%),
+    linear-gradient(rgba(255, 176, 96, 0.05), rgba(255, 176, 96, 0.05));
 }
+@media (max-width: 700px) {
+  /* A phone's pixels are the same size as a monitor's, but the sheet is a
+     quarter the width: scale the grain down so the fibre reads as fibre
+     rather than as a coarse texture. */
+  body::after,
+  html.bv-night body::after {
+    background-size: 150px 150px, 150px 150px, 320px 320px, 320px 320px, 640px 640px, auto, auto, auto;
+  }
+}
+
 
 @media (prefers-color-scheme: dark) {
   /* Dusk, not a basement — the shop keeps the gate's warmth after dark.
