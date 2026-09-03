@@ -13,18 +13,15 @@
     {
       "match": "^/product/",
       "art": "/art/arch.svg",
-      "particles": 1600,
-      "wmOpacity": 0.14
+      "particles": 1600
     },
     {
       "match": "^/cart",
-      "art": "/art/wall.svg",
-      "wmOpacity": 0.09
+      "art": "/art/wall.svg"
     },
     {
       "match": "^/checkout",
-      "art": "/art/wall.svg",
-      "wmOpacity": 0.09
+      "art": "/art/wall.svg"
     }
   ]
 }

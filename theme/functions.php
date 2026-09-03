@@ -18,6 +18,8 @@ add_action('wp_enqueue_scripts', function () {
     $dir = get_stylesheet_directory();
     $css_ver = @filemtime($dir . '/style.css') ?: wp_get_theme()->get('Version');
     wp_enqueue_style('benevixit', get_stylesheet_uri(), [], $css_ver);
+    // The hour's light, set before first paint (tiny, synchronous, in head).
+    wp_enqueue_script('bv-light', '/js/light.js', [], null, ['in_footer' => false]);
     // Masked-navigation dissolve, served same-origin by the Worker.
     wp_enqueue_script('bv-dissolve', '/js/dissolve.js', [], null, ['strategy' => 'defer', 'in_footer' => false]);
     if (is_product()) {

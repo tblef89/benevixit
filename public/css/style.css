@@ -68,19 +68,101 @@ html {
   overflow-y: auto;
 }
 
-/* The key, always present behind everything — rendered in ink via mask so it
-   follows the palette in both light and dark. The custom properties are read
-   by dissolve.js so transition particles land exactly on this element. */
-:root { --wm-height: 72; --wm-opacity: 0.07; }
+/* ── Light ──
+   The paper is lit by the visitor's hour. light.js sets these from the
+   device clock alone (nothing is sent): where the light falls, how long the
+   shadows are, how warm the cast. Every material effect below reads them,
+   so the whole page agrees about one light. Defaults: a mild late morning. */
+:root {
+  --sun-dx: 1px;
+  --sun-dy: 1px;
+  --relief: 0.7;
+  --light-x: 40%;
+  --light-y: 18%;
+  --light-strength: 0.65;
+  --light-warm: 0.15;
+  --emboss-hi: rgba(255, 253, 248, calc(0.8 * var(--relief)));
+  --emboss-lo: rgba(70, 50, 28, calc(0.24 * var(--relief)));
+  --press-hi: rgba(255, 255, 250, calc(0.6 * var(--relief)));
+}
+
+/* Daylight across the paper: a pool where the window's light falls, a warm
+   cast at the ends of the day, the far side of the page a shade deeper.
+   Sits above the art (it lights the emboss too) and below the text. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* The grain rides on top of the light so the soft gradients dither into
+     paper instead of banding. */
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
+    radial-gradient(110% 80% at var(--light-x) var(--light-y),
+      rgba(255, 251, 240, calc(var(--light-strength) * 0.55)) 0%,
+      rgba(255, 251, 240, 0) 62%),
+    linear-gradient(to bottom,
+      rgba(90, 64, 34, 0) 45%,
+      rgba(90, 64, 34, calc(var(--light-strength) * 0.1)) 100%),
+    linear-gradient(
+      rgba(214, 160, 88, calc(var(--light-warm) * 0.1)),
+      rgba(214, 160, 88, calc(var(--light-warm) * 0.1)));
+}
+
+/* The art, always present behind everything — not printed but pressed: a
+   blind emboss on the linen, lit by the hour. The element's own mask holds
+   only a whisper of ink (--wm-ink); the relief lives in its pseudo-elements:
+   a highlight sliver on the edge facing the light and a shadow sliver on the
+   far edge, each cut by subtracting the shape from itself shifted by the
+   sun's offset. The custom properties are read by dissolve.js so transition
+   particles land exactly on this element, relief and all. */
+:root {
+  --wm-height: 72;
+  --wm-ink: 0.035;
+  --wm-art: url('/art/key.svg');
+  --wm-size: auto calc(var(--wm-height) * 1%);
+  --wm-px: 50%;
+  --wm-py: 50%;
+}
 .bv-watermark {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-color: var(--ink);
-  opacity: var(--wm-opacity);
-  -webkit-mask: url('/art/key.svg') no-repeat center / auto calc(var(--wm-height) * 1%);
-  mask: url('/art/key.svg') no-repeat center / auto calc(var(--wm-height) * 1%);
+  background-color: color-mix(in srgb, var(--ink) calc(var(--wm-ink) * 100%), transparent);
+  -webkit-mask: var(--wm-art) no-repeat var(--wm-px) var(--wm-py) / var(--wm-size);
+  mask: var(--wm-art) no-repeat var(--wm-px) var(--wm-py) / var(--wm-size);
+}
+@supports (mask-composite: subtract) or (-webkit-mask-composite: source-out) {
+  .bv-watermark::before,
+  .bv-watermark::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    -webkit-mask-image: var(--wm-art), var(--wm-art);
+    mask-image: var(--wm-art), var(--wm-art);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: var(--wm-size), var(--wm-size);
+    mask-size: var(--wm-size), var(--wm-size);
+    -webkit-mask-composite: source-out;
+    mask-composite: subtract;
+  }
+  .bv-watermark::before {
+    background-color: var(--emboss-hi);
+    -webkit-mask-position: var(--wm-px) var(--wm-py),
+      calc(var(--wm-px) + var(--sun-dx)) calc(var(--wm-py) + var(--sun-dy));
+    mask-position: var(--wm-px) var(--wm-py),
+      calc(var(--wm-px) + var(--sun-dx)) calc(var(--wm-py) + var(--sun-dy));
+  }
+  .bv-watermark::after {
+    background-color: var(--emboss-lo);
+    -webkit-mask-position: var(--wm-px) var(--wm-py),
+      calc(var(--wm-px) - var(--sun-dx)) calc(var(--wm-py) - var(--sun-dy));
+    mask-position: var(--wm-px) var(--wm-py),
+      calc(var(--wm-px) - var(--sun-dx)) calc(var(--wm-py) - var(--sun-dy));
+  }
 }
 /* During a transition the particle copy performs; the real element waits. */
 .bv-transit .bv-watermark { visibility: hidden; }
@@ -197,11 +279,37 @@ a { color: var(--accent); }
 }
 /* Inscriptional capitals want air between them — carved, not typed. */
 .page h1 { font-family: 'Cinzel', serif; font-size: 1.2rem; margin-bottom: 1.5rem; letter-spacing: 0.14em; }
+/* Letterpress: the capitals are pressed into the paper; the far wall of the
+   impression catches the light. */
+.page h1 { text-shadow: calc(var(--sun-dx) * 0.7) calc(var(--sun-dy) * 0.7) 0 var(--press-hi); }
 .page h2 { font-size: 0.95rem; margin: 1.5rem 0 0.5rem; color: var(--accent); }
 .page p, .page li { margin-bottom: 0.75rem; color: var(--ink-body); }
 .page ul { padding-left: 1.25rem; }
 .page .back { display: inline-block; margin-bottom: 2rem; }
 
+/* Night: after nine by the visitor's clock (or by their own preference) the
+   lamp is lit. Even then it stays warm — dusk, not a basement. The media
+   query below is the no-JS fallback for the same palette. */
+html.bv-night {
+  --paper: #201d17;
+  --ink: #ece6da;
+  --ink-body: #cfc7b8;
+  --ink-soft: #a89f8f;
+  --accent: #b9a26e;
+  --line: #3a342a;
+  --emboss-hi: rgba(255, 236, 200, calc(0.24 * var(--relief)));
+  --emboss-lo: rgba(0, 0, 0, calc(0.55 * var(--relief)));
+  --press-hi: rgba(255, 240, 210, 0.09);
+  color-scheme: dark;
+}
+html.bv-night body::after {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
+    radial-gradient(90% 70% at var(--light-x) var(--light-y),
+      rgba(255, 196, 120, 0.14) 0%,
+      rgba(255, 196, 120, 0) 60%),
+    linear-gradient(to top, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.24) 100%);
+}
 @media (prefers-color-scheme: dark) {
   /* Even the dark theme stays warm — dusk, not a basement. */
   :root {
