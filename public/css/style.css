@@ -86,6 +86,21 @@ html {
   --press-hi: rgba(255, 255, 250, calc(0.6 * var(--relief)));
 }
 
+/* ── Paper ──
+   Handmade sheet, three scales at once: a fine tooth, a fibrous mid-scale
+   mottle, and a slow cloud of thickness variation. The fibre layer is one
+   noise field drawn twice — a lit copy in place and a shadow copy shifted
+   by the sun's offset — so every clump of fibre is embossed by the same
+   light that presses the key. Tiles are tiny SVG turbulence, rasterised
+   once and cached. */
+:root {
+  --paper-fibre-hi: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='512'%20height='512'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.11'%20numOctaves='5'%20seed='7'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%201%200%200%200%200%201%200%200%200%200%201%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200.10%200.48'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  --paper-fibre-lo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='512'%20height='512'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.11'%20numOctaves='5'%20seed='7'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200.25%200%200%200%200%200.17%200%200%200%200%200.08%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200.06%200.26'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  --paper-tooth-hi: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='240'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.95'%20numOctaves='2'%20seed='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%201%200%200%200%200%201%200%200%200%200%201%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200%200%200.32'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  --paper-tooth-lo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='240'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.95'%20numOctaves='2'%20seed='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200.2%200%200%200%200%200.14%200%200%200%200%200.06%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200%200%200.20'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  --paper-cloud: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1024'%20height='1024'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.006'%20numOctaves='3'%20seed='11'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200.35%200%200%200%200%200.25%200%200%200%200%200.12%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200.03%200.055'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 /* Daylight across the paper: a pool where the window's light falls, a warm
    cast at the ends of the day, the far side of the page a shade deeper.
    Sits above the art (it lights the emboss too) and below the text. */
@@ -95,10 +110,14 @@ body::after {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  /* The grain rides on top of the light so the soft gradients dither into
-     paper instead of banding. */
+  /* The paper rides on top of the light: the surface dithers the soft
+     gradients so nothing bands, and the fibres catch the same sun. */
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
+    var(--paper-tooth-lo) 0 0 / 240px 240px,
+    var(--paper-tooth-hi) 0 0 / 240px 240px,
+    var(--paper-fibre-lo) calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5) / 512px 512px,
+    var(--paper-fibre-hi) 0 0 / 512px 512px,
+    var(--paper-cloud) 0 0 / 1024px 1024px,
     radial-gradient(110% 80% at var(--light-x) var(--light-y),
       rgba(255, 251, 240, calc(var(--light-strength) * 0.55)) 0%,
       rgba(255, 251, 240, 0) 62%),
@@ -304,7 +323,11 @@ html.bv-night {
 }
 html.bv-night body::after {
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
+    var(--paper-tooth-lo) 0 0 / 240px 240px,
+    var(--paper-tooth-hi) 0 0 / 240px 240px,
+    var(--paper-fibre-lo) calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5) / 512px 512px,
+    var(--paper-fibre-hi) 0 0 / 512px 512px,
+    var(--paper-cloud) 0 0 / 1024px 1024px,
     radial-gradient(90% 70% at var(--light-x) var(--light-y),
       rgba(255, 196, 120, 0.14) 0%,
       rgba(255, 196, 120, 0) 60%),
