@@ -90,7 +90,10 @@
       var py = pys.indexOf('%') !== -1
         ? (H - h) * ((evalCssLength(pys, 100) || 0) / 100)
         : (evalCssLength(pys, H - h) || 0);
-      var o = parseFloat(cs.opacity);
+      // The ink whisper lives in --wm-ink (the element itself is opaque so
+      // its emboss pseudo-elements aren't dimmed with it).
+      var inkVar = parseFloat(cs.getPropertyValue('--wm-ink'));
+      var o = isFinite(inkVar) ? inkVar : parseFloat(cs.opacity);
       return {
         hFrac: h / H,
         cxFrac: (px + w / 2) / W,
@@ -111,11 +114,9 @@
   function applyScene(scene) {
     var el = document.querySelector('.bv-watermark');
     if (!el || !scene) return;
-    if (scene.art) {
-      el.style.webkitMaskImage = 'url(' + scene.art + ')';
-      el.style.maskImage = 'url(' + scene.art + ')';
-    }
-    if (scene.wmOpacity) el.style.opacity = String(scene.wmOpacity);
+    // The element's mask and its emboss pseudo-elements all read --wm-art.
+    if (scene.art) el.style.setProperty('--wm-art', 'url(' + scene.art + ')');
+    if (scene.wmInk) el.style.setProperty('--wm-ink', String(scene.wmInk));
   }
 
   function makeCanvas() {
@@ -295,70 +296,115 @@
       y: canvas.height * geom.cyFrac - h / 2,
     };
   }
-  function tintedImage(img, box) {
-    var c = document.createElement('canvas');
-    c.width = Math.max(1, Math.round(box.w));
-    c.height = Math.max(1, Math.round(box.h));
-    var x = c.getContext('2d');
-    x.drawImage(img, 0, 0, c.width, c.height);
-    x.globalCompositeOperation = 'source-in';
-    x.fillStyle = ink();
-    x.fillRect(0, 0, c.width, c.height);
-    return { cnv: c, x: box.x, y: box.y, w: box.w, h: box.h };
+  // The relief the page is currently lit with: the sun's offset and the
+  // highlight/shadow colours resolved from the emboss pseudo-elements, so
+  // the canvas copy is pressed exactly like the real one.
+  function reliefParams() {
+    var rootCs = getComputedStyle(document.documentElement);
+    var dx = parseFloat(rootCs.getPropertyValue('--sun-dx'));
+    var dy = parseFloat(rootCs.getPropertyValue('--sun-dy'));
+    var hi = 'rgba(255, 253, 248, 0.5)', lo = 'rgba(70, 50, 28, 0.16)';
+    try {
+      var el = document.querySelector('.bv-watermark');
+      if (el) {
+        var b = getComputedStyle(el, '::before').backgroundColor;
+        var a = getComputedStyle(el, '::after').backgroundColor;
+        if (b && b !== 'rgba(0, 0, 0, 0)') hi = b;
+        if (a && a !== 'rgba(0, 0, 0, 0)') lo = a;
+      }
+    } catch (e) {}
+    return { dx: isFinite(dx) ? dx : 1, dy: isFinite(dy) ? dy : 1, hi: hi, lo: lo };
   }
 
-  function drawAtRest(canvas, image, particles, opacity) {
-    var ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.globalAlpha = opacity;
-    if (image) {
-      ctx.drawImage(image.cnv, image.x, image.y, image.w, image.h);
-    } else {
-      ctx.fillStyle = ink();
-      for (var i = 0; i < particles.length; i++) {
-        ctx.fillRect(particles[i].hx, particles[i].hy, 2, 2);
+  // A blind emboss of the art: a whisper of ink, a highlight sliver on the
+  // edge facing the light, a shadow sliver on the far edge — each sliver cut
+  // by subtracting the shape from itself shifted by the sun's offset, the
+  // same construction the CSS uses.
+  function reliefImage(img, box, inkAlpha, relief) {
+    var w = Math.max(1, Math.round(box.w)), h = Math.max(1, Math.round(box.h));
+    function shape() {
+      var c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      return c;
+    }
+    function sliver(dx, dy, color) {
+      var c = shape();
+      var x = c.getContext('2d');
+      x.globalCompositeOperation = 'destination-out';
+      x.drawImage(img, dx, dy, w, h);
+      x.globalCompositeOperation = 'source-in';
+      x.fillStyle = color;
+      x.fillRect(0, 0, w, h);
+      return c;
+    }
+    var tint = shape();
+    var t = tint.getContext('2d');
+    t.globalCompositeOperation = 'source-in';
+    t.fillStyle = ink();
+    t.fillRect(0, 0, w, h);
+
+    var out = document.createElement('canvas');
+    out.width = w; out.height = h;
+    var o = out.getContext('2d');
+    o.globalAlpha = inkAlpha;
+    o.drawImage(tint, 0, 0);
+    o.globalAlpha = 1;
+    o.drawImage(sliver(relief.dx, relief.dy, relief.hi), 0, 0);
+    o.drawImage(sliver(-relief.dx, -relief.dy, relief.lo), 0, 0);
+    return { cnv: out, x: box.x, y: box.y, w: box.w, h: box.h };
+  }
+
+  // Each particle is a pressed grain of paper: a lit fleck with its shadow.
+  function drawGrains(ctx, particles, direction, t, relief) {
+    var n = particles.length, i, p, e, x, y;
+    var xs = new Float32Array(n), ys = new Float32Array(n);
+    for (i = 0; i < n; i++) {
+      p = particles[i];
+      if (t === null) { xs[i] = p.hx; ys[i] = p.hy; continue; }
+      e = easeInOutCubic(Math.min(1, Math.max(0, (t - p.delay) / (1 - p.delay))));
+      if (direction === 'form') {
+        xs[i] = p.fx + (p.hx - p.fx) * e;
+        ys[i] = p.fy + (p.hy - p.fy) * e;
+      } else {
+        xs[i] = p.hx + (p.fx - p.hx) * e;
+        ys[i] = p.hy + (p.fy - p.hy) * e;
       }
     }
-    ctx.globalAlpha = 1;
+    ctx.fillStyle = relief.lo;
+    for (i = 0; i < n; i++) ctx.fillRect(xs[i] + relief.dx, ys[i] + relief.dy, 2, 2);
+    ctx.fillStyle = relief.hi;
+    for (i = 0; i < n; i++) ctx.fillRect(xs[i], ys[i], 2, 2);
   }
 
-  // 'scatter': home → far. 'form': far → home. Particles hold the
-  // watermark's own resting opacity throughout — the art travels, it does
-  // not ignite. Anything bolder reads as a different object than the one
-  // it claims to be.
-  function animateParticles(canvas, particles, direction, scene, opacity, image, done) {
+  function drawAtRest(canvas, image, particles, relief) {
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = 1;
+    if (image) ctx.drawImage(image.cnv, image.x, image.y, image.w, image.h);
+    else drawGrains(ctx, particles, 'form', null, relief);
+  }
+
+  // 'scatter': home → far. 'form': far → home. The pressed art hands its
+  // mass to the grains as they depart and receives it back as they land;
+  // nothing ever brightens beyond the relief the page itself wears.
+  function animateParticles(canvas, particles, direction, scene, relief, image, done) {
     var ctx = canvas.getContext('2d');
     var W = canvas.width, H = canvas.height;
-    var inkColor = ink();
     var ms = direction === 'form' ? (scene.formMs || 1400) : (scene.scatterMs || 900);
     var start = performance.now();
     function frame(now) {
       var t = Math.min(1, (now - start) / ms);
       ctx.clearRect(0, 0, W, H);
-      // The real drawing hands mass to the particles as they depart, and
-      // receives it back as they land; both stay at the resting opacity.
       var imgAlpha = direction === 'form'
         ? Math.max(0, (t - 0.65) / 0.35)
         : Math.max(0, 1 - t / 0.35);
       if (image && imgAlpha > 0) {
-        ctx.globalAlpha = opacity * easeInOutCubic(imgAlpha);
+        ctx.globalAlpha = easeInOutCubic(imgAlpha);
         ctx.drawImage(image.cnv, image.x, image.y, image.w, image.h);
       }
-      ctx.fillStyle = inkColor;
-      ctx.globalAlpha = opacity * (image ? easeInOutCubic(1 - imgAlpha) : 1);
-      for (var i = 0; i < particles.length; i++) {
-        var p = particles[i];
-        var e = easeInOutCubic(Math.min(1, Math.max(0, (t - p.delay) / (1 - p.delay))));
-        var x, y;
-        if (direction === 'form') {
-          x = p.fx + (p.hx - p.fx) * e;
-          y = p.fy + (p.hy - p.fy) * e;
-        } else {
-          x = p.hx + (p.fx - p.hx) * e;
-          y = p.hy + (p.fy - p.hy) * e;
-        }
-        ctx.fillRect(x, y, 2, 2);
-      }
+      ctx.globalAlpha = image ? easeInOutCubic(1 - imgAlpha) : 1;
+      drawGrains(ctx, particles, direction, t, relief);
       ctx.globalAlpha = 1;
       if (t < 1) requestAnimationFrame(frame);
       else done();
@@ -433,10 +479,11 @@
       var geom = fromGeom || defaultGeom();
       var particles = buildParticles(art, canvas, geom);
       var box = artBox(canvas, geom, art.aspect);
+      var relief = reliefParams();
       return fromImgReady.then(function (img) {
-        var image = img ? tintedImage(img, box) : null;
-        drawAtRest(canvas, image, particles, geom.opacity);
-        return { particles: particles, image: image, opacity: geom.opacity };
+        var image = img ? reliefImage(img, box, geom.opacity, relief) : null;
+        drawAtRest(canvas, image, particles, relief);
+        return { particles: particles, image: image, relief: relief };
       });
     });
 
@@ -465,10 +512,11 @@
           var destGeom = measureWatermark(art.aspect) || defaultGeom();
           var targetParticles = buildParticles(art, canvas, destGeom);
           var box = artBox(canvas, destGeom, art.aspect);
+          var relief = reliefParams();
           loadArtImage(scene.art).catch(function () { return null; }).then(function (img) {
-            var image = img ? tintedImage(img, box) : null;
+            var image = img ? reliefImage(img, box, destGeom.opacity, relief) : null;
           fadeContent(1, scene.formMs || 1400, null);
-          animateParticles(canvas, targetParticles, 'form', scene, destGeom.opacity, image, function () {
+          animateParticles(canvas, targetParticles, 'form', scene, relief, image, function () {
             setTimeout(function () {
               endTransit();
               // The real watermark (already showing this scene's art) takes
@@ -483,7 +531,7 @@
 
         fromDrawn.then(function (state) {
           if (state) {
-            animateParticles(canvas, state.particles, 'scatter', scene, state.opacity, state.image, function () {
+            animateParticles(canvas, state.particles, 'scatter', scene, state.relief, state.image, function () {
               targetReady.then(finish).catch(bail);
             });
           } else {
