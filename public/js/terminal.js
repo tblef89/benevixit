@@ -31,20 +31,64 @@ const Terminal = (() => {
     scrollBottom();
   }
 
-  // Print text character by character
+  // ── The Keeper's hand ──
+  // Not a teletype: a pen. Letters arrive with a hand's unevenness, the
+  // pen lifts between words, breathes at a comma, rests at a full stop, and
+  // slows into the final sentence the way a letter is finished rather than
+  // ended. `base` is the nominal per-character interval.
+  const reducedMotion = (() => {
+    try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+  })();
+
+  function lastSentenceStart(text) {
+    // Index where the final sentence begins (after the last terminator that
+    // isn't itself at the very end).
+    const trimmed = text.replace(/[\s.!?…”"')\]]+$/, '');
+    const m = trimmed.match(/[.!?…](?=[\s”"')\]]*\s)[^.!?…]*$/);
+    if (!m) return 0;
+    return trimmed.length - m[0].length + 1;
+  }
+
+  function delayAfter(text, i, base, finalStart) {
+    const ch = text[i];
+    const next = text[i + 1];
+    let d = base * (0.78 + Math.random() * 0.44);
+    if (ch === ' ') d += base * 0.7;
+    if (ch === ',') d += 190;
+    else if (ch === ';' || ch === ':' || ch === '—' || ch === '–') d += 280;
+    else if (/[.!?…]/.test(ch) && (next === undefined || /[\s”"')\]]/.test(next))) d += 460;
+    // The final sentence slows, gently, all the way to the last letter.
+    if (finalStart > 0 && i >= finalStart && text.length > finalStart) {
+      d *= 1 + 0.4 * ((i - finalStart) / (text.length - finalStart));
+    }
+    return d;
+  }
+
+  // Print text with the hand's rhythm; a nib follows the writing.
   function print(text, speed) {
-    speed = (speed || DEFAULT_SPEED) * PACE;
+    const base = (speed || DEFAULT_SPEED) * PACE;
     return new Promise(resolve => {
       const div = document.createElement('div');
       div.className = 'line';
+      const body = document.createElement('span');
+      const nib = document.createElement('span');
+      nib.className = 'cursor writing';
+      nib.setAttribute('aria-hidden', 'true');
+      div.appendChild(body);
+      div.appendChild(nib);
       output.appendChild(div);
+      const finalStart = lastSentenceStart(text);
       let i = 0;
       function tick() {
         if (i < text.length) {
-          div.textContent += text[i++];
+          body.textContent += text[i];
           scrollBottom();
-          setTimeout(tick, speed);
+          const d = delayAfter(text, i, base, finalStart);
+          i++;
+          setTimeout(tick, d);
         } else {
+          nib.remove();
+          div.textContent = body.textContent;
           resolve();
         }
       }
@@ -120,8 +164,21 @@ const Terminal = (() => {
         }
       }
 
+      let lastLen = 0;
       function onInput() {
-        inputText.textContent = hiddenInput.value;
+        const val = hiddenInput.value;
+        inputText.textContent = val;
+        // Where the pen lifts — after a word, at a stop — it leaves a blot of
+        // ink that settles into the paper. One per word, never a smear.
+        const last = val[val.length - 1];
+        if (!reducedMotion && val.length > lastLen && /[\s.,;:!?—–]/.test(last)) {
+          const blot = document.createElement('span');
+          blot.className = 'blot';
+          blot.setAttribute('aria-hidden', 'true');
+          inputText.parentNode.insertBefore(blot, inputText.nextSibling);
+          setTimeout(() => blot.remove(), 700);
+        }
+        lastLen = val.length;
         scrollBottom();
       }
 

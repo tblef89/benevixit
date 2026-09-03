@@ -238,18 +238,61 @@ body::after {
 .copyable.copied { color: var(--accent); }
 
 #input-line { white-space: pre-wrap; word-break: break-word; }
-/* Not a blinking DOS block — a thin caret with a slow breath, someone
-   composing a letter rather than a machine awaiting input. */
+/* Not a blinking DOS block — a nib: a thin stroke held at a pen's angle,
+   with a slow breath. It follows the keeper's writing and waits at the
+   visitor's line. */
 .cursor {
   display: inline-block;
   width: 1.5px;
   height: 1.15em;
-  margin-left: 1px;
+  margin-left: 2px;
   vertical-align: -0.18em;
   background: var(--accent);
+  transform: skewX(-14deg);
   animation: breathe 1.6s ease-in-out infinite;
 }
+.cursor.writing { animation: none; opacity: 0.85; }
 @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+
+/* A blot of ink left where a letter was set down, settling into the paper. */
+.blot {
+  display: inline-block;
+  width: 2.5px;
+  height: 2.5px;
+  margin: 0 0 0 -2px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: -0.02em;
+  animation: settle 0.55s ease-out forwards;
+}
+@keyframes settle {
+  0% { opacity: 0.55; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+
+/* While the keeper considers: the mark breathes at the margin. */
+.line.thinking { display: flex; align-items: center; min-height: 1.6em; }
+.bv-considering {
+  width: 14px;
+  height: 14px;
+  background-color: var(--ink);
+  -webkit-mask: url('/art/key_mark.svg') no-repeat center / contain;
+  mask: url('/art/key_mark.svg') no-repeat center / contain;
+  animation: consider 2.6s ease-in-out infinite;
+}
+@keyframes consider { 0%, 100% { opacity: 0.18; } 50% { opacity: 0.6; } }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cursor, .bv-considering { animation: none; }
+  .bv-considering { opacity: 0.4; }
+}
 
 #hidden-input {
   position: fixed;
