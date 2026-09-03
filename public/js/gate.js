@@ -121,18 +121,23 @@
   T.printInstant("(If you already know the word: /word <phrase>)");
   T.addLine('');
 
-  // Silence looks like death in a terminal — show a pulse while models run.
+  // Silence looks like death in a terminal, but dots look like a machine.
+  // While the models run, the keeper's mark breathes slowly at the margin —
+  // someone considering, not something loading.
   function thinking() {
     const div = document.createElement('div');
-    div.className = 'line system';
+    div.className = 'line thinking';
+    const mark = document.createElement('span');
+    mark.className = 'bv-considering';
+    mark.setAttribute('aria-hidden', 'true');
+    const sr = document.createElement('span');
+    sr.className = 'sr-only';
+    sr.textContent = 'The keeper considers.';
+    div.appendChild(mark);
+    div.appendChild(sr);
     document.getElementById('output').appendChild(div);
-    let n = 0;
-    const iv = setInterval(() => {
-      n = (n % 3) + 1;
-      div.textContent = 'The keeper considers' + '.'.repeat(n);
-      T.scrollBottom();
-    }, 350);
-    return () => { clearInterval(iv); div.remove(); };
+    T.scrollBottom();
+    return () => { div.remove(); };
   }
 
   async function apiWithPulse(path, body) {
@@ -166,7 +171,9 @@
       continue;
     }
 
-    await T.print(result.data.reply, 15);
+    // The hand's pauses lengthen a reply; a slightly quicker base keeps the
+    // whole under the visitor's patience while the rhythm does the talking.
+    await T.print(result.data.reply, 12);
     if (result.data.debug) {
       const d = result.data.debug;
       const t = d.thresholds;
