@@ -1,0 +1,24 @@
+# Credential-free merge gate. Merging to main deploys the Worker through the
+# Cloudflare GitHub integration, so the routing contract and a deploy dry-run
+# are checked on every pull request first. No Cloudflare token is used: the
+# harness strips remote-only bindings and the dry-run needs no account.
+name: routing
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  routing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npx --no-install wrangler deploy --dry-run --outdir /tmp/bv-dry-run

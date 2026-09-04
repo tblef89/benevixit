@@ -62,6 +62,7 @@ test('POST /?wc-ajax=update_order_review reaches the shop intact', async () => {
 for (const path of [
   '/wp-admin/admin-ajax.php',
   '/wp-json/wc/v3/webhooks',
+  '/wp-json/cipherpay/v1/webhook', // CipherPay's WooCommerce webhook endpoint
   '/wc-api/cipherpay_callback',
   '/?wc-api=cipherpay',
   '/wp-login.php',
