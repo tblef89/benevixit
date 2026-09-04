@@ -77,3 +77,27 @@ manifests, not new code.
 - Per-IP rate limits use Workers Rate Limiting bindings; per-session turn
   caps live in the Durable Object. KV holds only low-churn config.
 - Transcripts are purged when a session passes or its TTL alarm fires.
+
+## Testing
+
+```bash
+npm test
+```
+
+Boots the real wrangler dev runtime (workerd plus the static-assets layer)
+from a loopback derivation of `wrangler.jsonc`, points `SHOP_ORIGIN` at a
+stub origin that echoes what it receives, and runs `test/routing.test.mjs`
+against it. It proves the routing contract the site depends on:
+
+- static `GET`s are served from `ASSETS`; a miss is proxied to the shop;
+- non-`GET` traffic to any path — including `POST /?wc-ajax=…` whose path
+  exists as an asset — is never answered by the asset layer (the empty-405
+  defect) and reaches the shop with method, query, body, content type,
+  cookies, and headers intact;
+- `/gate/*` stays in the Worker, and shop redirects are rewritten back to
+  the public hostname.
+
+Requires `assets.run_worker_first: true` (see the comment in
+`wrangler.jsonc`). Needs no network and no Cloudflare credentials: the
+harness strips the remote-only bindings (`ai`, `unsafe`) and `routes`,
+which are not on the routing path.

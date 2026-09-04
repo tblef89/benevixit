@@ -9,11 +9,18 @@
     { "pattern": "www.benevixit.com", "custom_domain": true }
   ],
 
-  // Static frontend served from ./public; /gate/* always hits the Worker first.
+  // Static frontend lives in ./public, but EVERY request enters the Worker
+  // first (src/index.js): /gate/* is handled there; for other paths GET/HEAD
+  // try env.ASSETS and fall through to the WordPress origin on a miss, and
+  // all non-GET/HEAD traffic (checkout AJAX, admin-ajax, webhooks, payment
+  // callbacks) is proxied straight to WordPress. With the asset layer in
+  // front (a path list here), a POST to a path that exists as an asset —
+  // e.g. POST /?wc-ajax=update_order_review, whose path is "/" — was
+  // answered by Cloudflare with an empty 405 before the Worker ever ran.
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/gate/*"]
+    "run_worker_first": true
   },
 
   // Workers AI — all calls routed through the AI Gateway (see GATEWAY_ID below).
