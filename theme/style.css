@@ -574,6 +574,13 @@ body.bv-mode-addr #customer_details {
 }
 .woocommerce-checkout #customer_details .form-row .required { color: var(--accent); text-decoration: none; }
 .woocommerce-checkout #customer_details .form-row .optional { display: none; }
+.woocommerce-checkout #customer_details .form-row .description {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  font-style: italic;
+  margin-top: 0.3rem;
+}
 .woocommerce-checkout #customer_details .form-row input.input-text,
 .woocommerce-checkout #customer_details .form-row select,
 .woocommerce-checkout #customer_details .select2-container--default .select2-selection--single {
@@ -613,15 +620,23 @@ body.bv-mode-addr #customer_details {
 #shipping_state_field { grid-area: state; }
 #shipping_country_field { grid-area: country; }
 #shipping_phone_field { grid-area: phone; }
-.woocommerce-checkout [id$="hold_at_location_field"] { grid-area: loc; }
+/* The shipping plugin's Hold-at-Location field: matched by id here, and
+   marked .bv-loc by the checkout script wherever the plugin put it. */
+.woocommerce-checkout #customer_details .bv-loc,
+.woocommerce-checkout #customer_details [id*="hold_at_location"],
+.woocommerce-checkout #customer_details [id*="hold-at-location"] { grid-area: loc; }
 /* Only the chosen mode's fields show (the body class is set server-side,
-   HAL by default, and toggled by the checkout script). */
+   HAL by default, and toggled by the checkout script). !important because
+   WooCommerce's locale script un-hides address fields with an inline style
+   on every country change, including on load. */
 body.bv-mode-hal #shipping_address_1_field,
 body.bv-mode-hal #shipping_address_2_field,
 body.bv-mode-hal #shipping_city_field,
 body.bv-mode-hal #shipping_state_field,
 body.bv-mode-hal #shipping_country_field,
-body.bv-mode-addr [id$="hold_at_location_field"] { display: none; }
+body.bv-mode-addr #customer_details .bv-loc,
+body.bv-mode-addr #customer_details [id*="hold_at_location"],
+body.bv-mode-addr #customer_details [id*="hold-at-location"] { display: none !important; }
 /* The choice: two cards, hairline-ruled, in our voice. */
 .bv-card {
   display: block;
@@ -651,7 +666,7 @@ body.bv-mode-addr [id$="hold_at_location_field"] { display: none; }
 }
 .bv-card.is-chosen { border-color: var(--accent); }
 .bv-card.is-chosen .bv-card-title::before { background: var(--accent); border-color: var(--accent); }
-.bv-card p { margin: 0.45rem 0 0; font-size: 0.95rem; color: var(--ink-soft); line-height: 1.5; }
+.bv-card .bv-card-text { display: block; margin: 0.45rem 0 0; font-size: 0.95rem; color: var(--ink-soft); line-height: 1.5; }
 #bv-card-hal { grid-area: card-hal; }
 #bv-card-addr { grid-area: card-addr; }
 body.bv-mode-hal #bv-card-addr,
