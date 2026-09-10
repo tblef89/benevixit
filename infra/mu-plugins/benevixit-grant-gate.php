@@ -68,7 +68,7 @@ add_action('template_redirect', function () {
 add_filter('woocommerce_add_to_cart_validation', function ($passed, $product_id) {
     $slug = get_post_field('post_name', $product_id);
     if (in_array($slug, BV_GATED_PRODUCT_SLUGS, true) && !bv_has_access()) {
-        wc_add_notice('the door is shut.', 'error');
+        wc_add_notice('The door is shut.', 'error');
         return false;
     }
     return $passed;
