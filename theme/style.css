@@ -574,13 +574,23 @@ body.bv-mode-addr #customer_details {
 }
 .woocommerce-checkout #customer_details .form-row .required { color: var(--accent); text-decoration: none; }
 .woocommerce-checkout #customer_details .form-row .optional { display: none; }
+/* WooCommerce styles a field description as a blue speech bubble shown on
+   focus; here it is a line of small text under the field, always. */
 .woocommerce-checkout #customer_details .form-row .description {
-  display: block;
+  display: block !important;
+  position: static;
+  background: transparent !important;
+  color: var(--ink-soft) !important;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
   font-size: 0.8rem;
-  color: var(--ink-soft);
   font-style: italic;
-  margin-top: 0.3rem;
+  line-height: 1.4;
+  margin: 0.3rem 0 0;
 }
+.woocommerce-checkout #customer_details .form-row .description::before,
+.woocommerce-checkout #customer_details .form-row .description::after { display: none; content: none; }
 .woocommerce-checkout #customer_details .form-row input.input-text,
 .woocommerce-checkout #customer_details .form-row select,
 .woocommerce-checkout #customer_details .select2-container--default .select2-selection--single {
