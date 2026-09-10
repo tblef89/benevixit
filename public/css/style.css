@@ -52,7 +52,16 @@ html, body {
    but the eye registers "material" instead of a flat hex fill. */
 html {
   background-color: var(--paper);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  /* The sheet itself: the fibre and the slow cloud of thickness variation
+     are painted on the page and scroll with it, so the paper is continuous
+     however long the page — only the light (body::after) stays fixed. */
+  background-image:
+    var(--paper-fibre-lo),
+    var(--paper-fibre-hi),
+    var(--paper-cloud),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-position: calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5), 0 0, 0 0, 0 0;
+  background-size: 512px 512px, 512px 512px, 1024px 1024px, 240px 240px;
 }
 
 #terminal, #site-footer, .page {
@@ -115,9 +124,6 @@ body::after {
   background:
     var(--paper-tooth-lo) 0 0 / 240px 240px,
     var(--paper-tooth-hi) 0 0 / 240px 240px,
-    var(--paper-fibre-lo) calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5) / 512px 512px,
-    var(--paper-fibre-hi) 0 0 / 512px 512px,
-    var(--paper-cloud) 0 0 / 1024px 1024px,
     radial-gradient(110% 80% at var(--light-x) var(--light-y),
       rgba(255, 251, 240, calc(var(--light-strength) * 0.55)) 0%,
       rgba(255, 251, 240, 0) 62%),
@@ -376,9 +382,6 @@ html.bv-night body::after {
   background:
     var(--paper-tooth-lo) 0 0 / 240px 240px,
     var(--paper-tooth-hi) 0 0 / 240px 240px,
-    var(--paper-fibre-lo) calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5) / 512px 512px,
-    var(--paper-fibre-hi) 0 0 / 512px 512px,
-    var(--paper-cloud) 0 0 / 1024px 1024px,
     /* The lamp: a generous warm pool low on the page, the sheet visibly
        cream where the light falls, falling off into the dark of the room
        toward the far corner. */
@@ -395,9 +398,12 @@ html.bv-night body::after {
   /* A phone's pixels are the same size as a monitor's, but the sheet is a
      quarter the width: scale the grain down so the fibre reads as fibre
      rather than as a coarse texture. */
+  html {
+    background-size: 320px 320px, 320px 320px, 640px 640px, 150px 150px;
+  }
   body::after,
   html.bv-night body::after {
-    background-size: 150px 150px, 150px 150px, 320px 320px, 320px 320px, 640px 640px, auto, auto, auto;
+    background-size: 150px 150px, 150px 150px, auto, auto, auto;
   }
 }
 

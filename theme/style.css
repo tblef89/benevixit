@@ -56,7 +56,16 @@ body {
    The grain layer is a tiling SVG noise at ~4% — paper you can almost feel. */
 html {
   background-color: var(--paper);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  /* The sheet itself: the fibre and the slow cloud of thickness variation
+     are painted on the page and scroll with it, so the paper is continuous
+     however long the page — only the light (body::after) stays fixed. */
+  background-image:
+    var(--paper-fibre-lo),
+    var(--paper-fibre-hi),
+    var(--paper-cloud),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-position: calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5), 0 0, 0 0, 0 0;
+  background-size: 512px 512px, 512px 512px, 1024px 1024px, 240px 240px;
 }
 
 a { color: var(--accent); }
@@ -108,9 +117,6 @@ body::after {
   background:
     var(--paper-tooth-lo) 0 0 / 240px 240px,
     var(--paper-tooth-hi) 0 0 / 240px 240px,
-    var(--paper-fibre-lo) calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5) / 512px 512px,
-    var(--paper-fibre-hi) 0 0 / 512px 512px,
-    var(--paper-cloud) 0 0 / 1024px 1024px,
     radial-gradient(110% 80% at var(--light-x) var(--light-y),
       rgba(255, 251, 240, calc(var(--light-strength) * 0.55)) 0%,
       rgba(255, 251, 240, 0) 62%),
@@ -478,18 +484,317 @@ body::after {
   margin: 1.5rem 0 0.75rem;
 }
 
-/* ── ZEC checkout: no billing block, shipping form always open ── */
-#ship-to-different-address input { display: none; }
-#ship-to-different-address {
-  font-size: 1rem;
-  font-weight: 400;
-  letter-spacing: 0.04em;
+/* ── Checkout: one thing, never both ──
+   Classic Checkout's DOM is left exactly as WooCommerce renders it (the
+   FedEx Hold-at-Location script depends on it); the wrappers become
+   display:contents and every field is placed into a named grid area. The
+   choice cards and per-mode labels come from the checkout mu-plugin, which
+   sets body.bv-mode-hal / body.bv-mode-addr (HAL by default) and toggles it
+   as the visitor chooses. */
+.woocommerce-checkout #customer_details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 3rem;
+  row-gap: 0.25rem;
+  max-width: 52rem;
+  margin: 0 auto;
+  grid-template-areas:
+    "h-details h-details"
+    "email     zip"
+    "h-mode    h-mode"
+    "card-hal  card-addr"
+    "name1     name1"
+    "name2     name2"
+    "street    street"
+    "apt       apt"
+    "city      city"
+    "state     state"
+    "country   country"
+    "loc       loc"
+    "phone     phone"
+    "promise   promise";
 }
-.bv-ship-note {
+/* Fields of the chosen mode stack under its card, in its column. */
+body.bv-mode-hal #customer_details {
+  grid-template-areas:
+    "h-details h-details"
+    "email     zip"
+    "h-mode    h-mode"
+    "card-hal  card-addr"
+    "name1     ."
+    "name2     ."
+    "loc       ."
+    "phone     ."
+    "promise   promise";
+}
+body.bv-mode-addr #customer_details {
+  grid-template-areas:
+    "h-details h-details"
+    "email     zip"
+    "h-mode    h-mode"
+    "card-hal  card-addr"
+    ".         name1"
+    ".         name2"
+    ".         street"
+    ".         apt"
+    ".         city"
+    ".         state"
+    ".         country"
+    ".         phone"
+    "promise   promise";
+}
+.woocommerce-checkout .col-1,
+.woocommerce-checkout .col-2,
+.woocommerce-checkout .woocommerce-billing-fields,
+.woocommerce-checkout .woocommerce-shipping-fields,
+.woocommerce-checkout .woocommerce-billing-fields__field-wrapper,
+.woocommerce-checkout .woocommerce-shipping-fields__field-wrapper,
+.woocommerce-checkout .shipping_address,
+.woocommerce-checkout .bv-mode { display: contents; }
+.woocommerce-checkout #ship-to-different-address,
+.woocommerce-checkout .bv-ship-note,
+.woocommerce-checkout .woocommerce-additional-fields,
+.woocommerce-checkout .form-row.bv-mirror { display: none; }
+.woocommerce-checkout #customer_details .form-row {
+  margin: 0 0 1.1rem;
+  width: auto;
+  float: none;
+  padding: 0;
+}
+.woocommerce-checkout #customer_details .form-row label {
+  display: block;
+  font-size: 0.85rem;
   color: var(--ink-soft);
-  font-size: 0.8rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.02em;
 }
+.woocommerce-checkout #customer_details .form-row label small {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.woocommerce-checkout #customer_details .form-row .required { color: var(--accent); text-decoration: none; }
+.woocommerce-checkout #customer_details .form-row .optional { display: none; }
+.woocommerce-checkout #customer_details .form-row input.input-text,
+.woocommerce-checkout #customer_details .form-row select,
+.woocommerce-checkout #customer_details .select2-container--default .select2-selection--single {
+  width: 100%;
+  background: color-mix(in srgb, var(--paper) 88%, white);
+}
+.woocommerce-checkout .bv-h,
+.woocommerce-checkout .woocommerce-billing-fields > h3,
+.woocommerce-checkout #order_review_heading {
+  font-family: 'Cinzel', serif;
+  font-weight: 400;
+  font-size: 0.95rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 1.25rem 0 0.75rem;
+  color: var(--ink);
+  text-shadow: calc(var(--sun-dx) * 0.7) calc(var(--sun-dy) * 0.7) 0 var(--press-hi);
+}
+.woocommerce-checkout .bv-h small {
+  font-family: 'Cormorant Garamond', serif;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 1rem;
+  color: var(--ink-soft);
+  margin-left: 0.9rem;
+  font-style: italic;
+}
+.woocommerce-checkout .woocommerce-billing-fields > h3 { grid-area: h-details; }
+#bv-h-mode { grid-area: h-mode; }
+#billing_email_field { grid-area: email; }
+#shipping_postcode_field { grid-area: zip; }
+#shipping_first_name_field { grid-area: name1; }
+#shipping_last_name_field { grid-area: name2; }
+#shipping_address_1_field { grid-area: street; }
+#shipping_address_2_field { grid-area: apt; }
+#shipping_city_field { grid-area: city; }
+#shipping_state_field { grid-area: state; }
+#shipping_country_field { grid-area: country; }
+#shipping_phone_field { grid-area: phone; }
+.woocommerce-checkout [id$="hold_at_location_field"] { grid-area: loc; }
+/* Only the chosen mode's fields show (the body class is set server-side,
+   HAL by default, and toggled by the checkout script). */
+body.bv-mode-hal #shipping_address_1_field,
+body.bv-mode-hal #shipping_address_2_field,
+body.bv-mode-hal #shipping_city_field,
+body.bv-mode-hal #shipping_state_field,
+body.bv-mode-hal #shipping_country_field,
+body.bv-mode-addr [id$="hold_at_location_field"] { display: none; }
+/* The choice: two cards, hairline-ruled, in our voice. */
+.bv-card {
+  display: block;
+  position: relative;
+  padding: 1rem 1.1rem 0.9rem;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  margin-bottom: 1.25rem;
+  transition: border-color 0.3s, opacity 0.3s;
+}
+.bv-card input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.bv-card .bv-card-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 1.15rem;
+  color: var(--ink);
+}
+.bv-card .bv-card-title::before {
+  content: '';
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1px solid var(--ink-soft);
+  border-radius: 50%;
+  flex: none;
+  transform: translateY(-1px);
+}
+.bv-card.is-chosen { border-color: var(--accent); }
+.bv-card.is-chosen .bv-card-title::before { background: var(--accent); border-color: var(--accent); }
+.bv-card p { margin: 0.45rem 0 0; font-size: 0.95rem; color: var(--ink-soft); line-height: 1.5; }
+#bv-card-hal { grid-area: card-hal; }
+#bv-card-addr { grid-area: card-addr; }
+body.bv-mode-hal #bv-card-addr,
+body.bv-mode-addr #bv-card-hal { opacity: 0.55; }
+/* Labels that change with the choice. */
+.bv-lbl-hal, .bv-lbl-addr { display: none; }
+body.bv-mode-hal .bv-lbl-hal,
+body.bv-mode-addr .bv-lbl-addr { display: inline; }
+#bv-promise {
+  grid-area: promise;
+  margin: 0.5rem 0 2rem;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  font-style: italic;
+  text-align: center;
+}
+#bv-promise::before {
+  content: '';
+  display: block;
+  width: 3rem;
+  height: 1px;
+  background: var(--line);
+  margin: 0 auto 0.9rem;
+}
+@media (max-width: 700px) {
+  .woocommerce-checkout #customer_details,
+  body.bv-mode-hal #customer_details,
+  body.bv-mode-addr #customer_details {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "h-details" "email" "zip" "h-mode"
+      "card-hal" "name1" "name2" "loc" "phone"
+      "card-addr" "street" "apt" "city" "state" "country"
+      "promise";
+  }
+  /* On one column the name and phone sit under whichever card is chosen. */
+  body.bv-mode-addr #customer_details {
+    grid-template-areas:
+      "h-details" "email" "zip" "h-mode"
+      "card-hal"
+      "card-addr" "name1" "name2" "street" "apt" "city" "state" "country" "phone"
+      "promise";
+  }
+}
+
+/* ── Order review + payment: ordinary, not an endeavour ── */
+.woocommerce-checkout #order_review_heading,
+.woocommerce-checkout #order_review { max-width: 52rem; margin-left: auto; margin-right: auto; }
+.woocommerce-checkout #order_review_heading { margin-top: 2rem; }
+/* The order, set with air: no box, hairlines between lines, the amounts
+   ranged right in a column of their own. */
+.woocommerce-checkout table.shop_table {
+  width: 100%;
+  margin-bottom: 2rem;
+  border: 0 !important;
+  border-collapse: collapse;
+  font-size: 1.05rem;
+}
+.woocommerce-checkout table.shop_table th,
+.woocommerce-checkout table.shop_table td {
+  padding: 1.1rem 0.25rem;
+  text-align: left;
+  vertical-align: top;
+  border: 0 !important;
+  border-bottom: 1px solid var(--line) !important;
+  line-height: 1.5;
+}
+.woocommerce-checkout table.shop_table thead th {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  padding-top: 0;
+}
+.woocommerce-checkout table.shop_table th:last-child,
+.woocommerce-checkout table.shop_table td:last-child,
+.woocommerce-checkout table.shop_table .product-total,
+.woocommerce-checkout table.shop_table tfoot td {
+  text-align: right;
+  white-space: nowrap;
+  width: 11rem;
+}
+.woocommerce-checkout table.shop_table tbody td { color: var(--ink); }
+.woocommerce-checkout table.shop_table tfoot th { color: var(--ink-soft); font-weight: 400; }
+.woocommerce-checkout table.shop_table tfoot td { color: var(--ink); }
+.woocommerce-checkout table.shop_table tfoot tr.order-total th,
+.woocommerce-checkout table.shop_table tfoot tr.order-total td {
+  font-size: 1.15rem;
+  color: var(--ink);
+  border-bottom: 0 !important;
+  padding-top: 1.4rem;
+}
+.woocommerce-checkout table.shop_table ul#shipping_method { list-style: none; margin: 0; padding: 0; }
+.woocommerce-checkout table.shop_table ul#shipping_method li { margin: 0 0 0.5rem; white-space: normal; }
+.woocommerce-checkout table.shop_table ul#shipping_method label { color: var(--ink); }
+@media (max-width: 700px) {
+  .woocommerce-checkout table.shop_table th,
+  .woocommerce-checkout table.shop_table td { padding: 1.25rem 0; display: table-cell; }
+  .woocommerce-checkout table.shop_table th:last-child,
+  .woocommerce-checkout table.shop_table td:last-child { width: 7rem; }
+}
+#payment {
+  background: transparent !important;
+  border: 1px solid var(--line);
+  border-radius: 0 !important;
+}
+#payment ul.payment_methods {
+  list-style: none;
+  margin: 0;
+  padding: 0.9rem 1rem !important;
+  border-bottom: 1px solid var(--line) !important;
+}
+#payment ul.payment_methods li { font-size: 1rem; line-height: 1.6; }
+#payment ul.payment_methods li input[type="radio"] { margin: 0 0.5rem 0 0; accent-color: var(--accent); vertical-align: middle; }
+#payment ul.payment_methods li label { display: inline-flex; align-items: center; gap: 0.6rem; color: var(--ink); }
+/* The gateway's logo at the size of a word, not a banner. */
+#payment ul.payment_methods li img,
+#payment ul.payment_methods li svg,
+#payment div.payment_box img,
+#payment div.payment_box svg {
+  max-height: 1.35rem !important;
+  height: 1.35rem;
+  width: auto !important;
+  max-width: 8rem !important;
+  margin: 0 !important;
+  float: none !important;
+  vertical-align: middle;
+}
+#payment div.payment_box {
+  background: transparent !important;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  padding: 0.25rem 0 0.75rem 1.9rem !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  width: auto !important;
+}
+#payment div.payment_box::before { display: none !important; }
+#payment div.payment_box p { margin: 0 0 0.4rem; }
+#payment .place-order { padding: 1rem !important; }
+.woocommerce-checkout .woocommerce-privacy-policy-text { font-size: 0.85rem; color: var(--ink-soft); }
 
 /* ── Ghost footer (matches the terminal) ── */
 #site-footer {
@@ -551,9 +856,6 @@ html.bv-night body::after {
   background:
     var(--paper-tooth-lo) 0 0 / 240px 240px,
     var(--paper-tooth-hi) 0 0 / 240px 240px,
-    var(--paper-fibre-lo) calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5) / 512px 512px,
-    var(--paper-fibre-hi) 0 0 / 512px 512px,
-    var(--paper-cloud) 0 0 / 1024px 1024px,
     /* The lamp: a generous warm pool low on the page, the sheet visibly
        cream where the light falls, falling off into the dark of the room
        toward the far corner. */
@@ -570,9 +872,12 @@ html.bv-night body::after {
   /* A phone's pixels are the same size as a monitor's, but the sheet is a
      quarter the width: scale the grain down so the fibre reads as fibre
      rather than as a coarse texture. */
+  html {
+    background-size: 320px 320px, 320px 320px, 640px 640px, 150px 150px;
+  }
   body::after,
   html.bv-night body::after {
-    background-size: 150px 150px, 150px 150px, 320px 320px, 320px 320px, 640px 640px, auto, auto, auto;
+    background-size: 150px 150px, 150px 150px, auto, auto, auto;
   }
 }
 
