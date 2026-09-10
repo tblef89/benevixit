@@ -15,6 +15,18 @@
  * Layout is the theme's job (theme/style.css, "Checkout: one thing, never
  * both"): the DOM WooCommerce renders is left intact; this file only adds
  * the choice cards, per-mode labels, and the validation that goes with them.
+ *
+ * Two WooCommerce behaviours shape how this is written:
+ *  - address-i18n.js re-applies the *locale* label, placeholder and required
+ *    state to address_1/address_2/city/state/postcode/country/phone every
+ *    time a country is set (including on load), and un-hides them with an
+ *    inline style. So those labels are set through the locale
+ *    (woocommerce_default_address_fields), not woocommerce_checkout_fields,
+ *    and the theme hides fields with !important.
+ *  - WooCommerce registers its scripts on wp_enqueue_scripts at priority 10;
+ *    an mu-plugin's callback at the same priority runs first, and an inline
+ *    script attached to a not-yet-registered handle is silently dropped.
+ *    Ours attaches at priority 20.
  */
 
 defined('ABSPATH') || exit;
@@ -34,10 +46,17 @@ const BV_MIRRORED_ADDRESS_KEYS = [
 // Shipping fields a Hold-at-Location order does not need.
 const BV_ADDRESS_ONLY_KEYS = ['shipping_address_1', 'shipping_city', 'shipping_state'];
 
+// Address fields whose labels WooCommerce's locale script owns.
+const BV_LOCALE_KEYS = ['address_1', 'address_2', 'city', 'state', 'postcode', 'country', 'phone'];
+
 // The retention promise shown under the choice. Empty until the automated
 // purge (issue #45) is live — a promise on the page must be kept by
 // machinery, not memory.
 const BV_RETENTION_PROMISE = '';
+
+function bv_is_checkout() {
+    return function_exists('is_checkout') && is_checkout();
+}
 
 // The visitor's choice, from the posted checkout data (also present in the
 // order-review refresh, where WooCommerce posts the serialized form).
@@ -55,15 +74,85 @@ function bv_delivery_mode(array $posted = null) {
 }
 
 // Which posted key carries the chosen Hold-at-Location, if any. PluginHive's
-// field key is matched by suffix so a rename upstream does not break us.
+// field key is matched loosely so a rename upstream does not break us.
+function bv_is_hal_key($key) {
+    return is_string($key) && preg_match('/hold[_-]?at[_-]?location/i', $key);
+}
+
 function bv_posted_hal_choice(array $data) {
     foreach ($data as $key => $value) {
-        if (is_string($key) && preg_match('/hold_at_location$/i', $key) && is_scalar($value) && trim((string) $value) !== '') {
+        if (bv_is_hal_key($key) && is_scalar($value) && trim((string) $value) !== '') {
             return (string) $value;
         }
     }
     return '';
 }
+
+// A label that reads for whichever choice is made; the theme shows the span
+// for the current mode. bv_plain_label() picks the right one for messages.
+function bv_mode_label($hal, $addr) {
+    return '<span class="bv-lbl-hal">' . $hal . '</span><span class="bv-lbl-addr">' . $addr . '</span>';
+}
+
+function bv_plain_label($label, $mode = null) {
+    $mode = $mode ?: bv_delivery_mode();
+    if (preg_match('/<span class="bv-lbl-' . ($mode === 'hal' ? 'hal' : 'addr') . '">(.*?)<\/span>/', $label, $m)) {
+        $label = $m[1];
+    }
+    return trim(wp_strip_all_tags($label));
+}
+
+// Address labels, through the locale so the browser-side locale script
+// (which rewrites them on load and on every country change) agrees with the
+// server-rendered form.
+add_filter('woocommerce_default_address_fields', function ($fields) {
+    if (!bv_is_checkout()) {
+        return $fields;
+    }
+    $labels = [
+        'address_1' => 'street address',
+        'address_2' => 'apartment, suite, unit (optional)',
+        'city'      => 'town / city',
+        'state'     => 'state',
+        'postcode'  => 'zip code',
+        'country'   => 'country',
+        'phone'     => bv_mode_label('phone (optional) <small>— FedEx texts you when it is ready</small>', 'phone (optional)'),
+    ];
+    foreach ($labels as $key => $label) {
+        if (!isset($fields[$key])) {
+            continue;
+        }
+        $fields[$key]['label'] = $label;
+        // A visible label, not a placeholder standing in for one.
+        $fields[$key]['label_class'] = [];
+        $fields[$key]['placeholder'] = $key === 'address_1' ? 'house number and street name' : '';
+    }
+    if (isset($fields['phone'])) {
+        $fields['phone']['required'] = false;
+    }
+    if (isset($fields['postcode'])) {
+        $fields['postcode']['required'] = true;
+        $fields['postcode']['description'] = 'for nearby FedEx locations and rates';
+    }
+    return $fields;
+});
+
+// Countries may override those labels ("ZIP Code", "State" for the US, and
+// so on); on the checkout ours stand for every country.
+add_filter('woocommerce_get_country_locale', function ($locale) {
+    if (!bv_is_checkout()) {
+        return $locale;
+    }
+    foreach ($locale as $country => $fields) {
+        if (!is_array($fields)) {
+            continue;
+        }
+        foreach (BV_LOCALE_KEYS as $key) {
+            unset($locale[$country][$key]['label'], $locale[$country][$key]['placeholder']);
+        }
+    }
+    return $locale;
+});
 
 add_filter('woocommerce_checkout_fields', function ($fields) {
     // Billing: the email (visible) plus the address fields (hidden, optional,
@@ -86,51 +175,44 @@ add_filter('woocommerce_checkout_fields', function ($fields) {
     // keep anything we did not author.
     foreach ($fields['billing'] as $name => $field) {
         if (!isset($billing[$name]) && strpos($name, 'billing_') !== 0) {
-            $field['label'] = 'nearby FedEx locations';
             $billing[$name] = $field;
         }
     }
     $fields['billing'] = $billing;
 
-    // Shipping: labels that speak for whichever choice is made. The two
-    // spans are shown/hidden by the theme with the mode class.
+    // Shipping: names that speak for whichever choice is made. (The address
+    // labels come through the locale, above.)
     $s = &$fields['shipping'];
     if (isset($s['shipping_first_name'])) {
-        $s['shipping_first_name']['label'] = '<span class="bv-lbl-hal">legal first name, as on your ID</span><span class="bv-lbl-addr">a first name for the parcel</span>';
+        $s['shipping_first_name']['label'] = bv_mode_label('legal first name, as on your ID', 'a first name for the parcel');
     }
     if (isset($s['shipping_last_name'])) {
-        $s['shipping_last_name']['label'] = '<span class="bv-lbl-hal">legal last name</span><span class="bv-lbl-addr">a last name</span>';
+        $s['shipping_last_name']['label'] = bv_mode_label('legal last name', 'a last name');
     }
     if (isset($s['shipping_postcode'])) {
-        $s['shipping_postcode']['label'] = 'zip code <small>— for nearby locations and rates</small>';
         $s['shipping_postcode']['required'] = true;
     }
     if (isset($s['shipping_phone'])) {
-        $s['shipping_phone']['label'] = '<span class="bv-lbl-hal">phone (optional) <small>— FedEx texts you when it is ready</small></span><span class="bv-lbl-addr">phone (optional)</span>';
         $s['shipping_phone']['required'] = false;
-    }
-    if (isset($s['shipping_address_1'])) {
-        $s['shipping_address_1']['label'] = 'street address';
-        $s['shipping_address_1']['placeholder'] = 'house number and street name';
-    }
-    if (isset($s['shipping_address_2'])) {
-        $s['shipping_address_2']['label'] = 'apartment, suite, unit (optional)';
-        $s['shipping_address_2']['placeholder'] = '';
-    }
-    if (isset($s['shipping_country'])) {
-        $s['shipping_country']['label'] = 'country';
-    }
-    if (isset($s['shipping_city'])) {
-        $s['shipping_city']['label'] = 'town / city';
-    }
-    if (isset($s['shipping_state'])) {
-        $s['shipping_state']['label'] = 'state';
     }
     unset($s);
 
     unset($fields['order']['order_comments']);
     return $fields;
 });
+
+// The Hold-at-Location field, in our voice — whenever and however the
+// shipping plugin adds it.
+add_filter('woocommerce_checkout_fields', function ($fields) {
+    foreach (['billing', 'shipping'] as $group) {
+        foreach ($fields[$group] ?? [] as $name => $field) {
+            if (bv_is_hal_key($name)) {
+                $fields[$group][$name]['label'] = 'nearby FedEx locations';
+            }
+        }
+    }
+    return $fields;
+}, PHP_INT_MAX);
 
 // The shipping form is always the address form — no "different address?"
 // toggle (the checkbox itself is hidden by the theme).
@@ -139,7 +221,7 @@ add_filter('woocommerce_ship_to_different_address_checked', '__return_true');
 // The mode class on <body>, set server-side (HAL by default) so the layout
 // is right before — or without — any script; the checkout script toggles it.
 add_filter('body_class', function ($classes) {
-    if (function_exists('is_checkout') && is_checkout()) {
+    if (bv_is_checkout()) {
         $classes[] = 'bv-mode-' . (bv_delivery_mode() === 'address' ? 'addr' : 'hal');
     }
     return $classes;
@@ -154,12 +236,12 @@ add_action('woocommerce_after_checkout_billing_form', function () {
       <label class="bv-card<?php echo $mode === 'hal' ? ' is-chosen' : ''; ?>" id="bv-card-hal">
         <input type="radio" name="bv_delivery" value="hal" <?php checked($mode, 'hal'); ?>>
         <span class="bv-card-title">hold at a FedEx location</span>
-        <p>Use your legal name, which FedEx will verify with your ID at pickup. No need to share your address.</p>
+        <span class="bv-card-text">Use your legal name, which FedEx will verify with your ID at pickup. No need to share your address.</span>
       </label>
       <label class="bv-card<?php echo $mode === 'address' ? ' is-chosen' : ''; ?>" id="bv-card-addr">
         <input type="radio" name="bv_delivery" value="address" <?php checked($mode, 'address'); ?>>
         <span class="bv-card-title">deliver to an address</span>
-        <p>Tell us the address you'd like it delivered. Exact legal name not required.</p>
+        <span class="bv-card-text">Tell us the address you'd like it delivered. Exact legal name not required.</span>
       </label>
     </div>
     <?php
@@ -188,6 +270,12 @@ add_action('woocommerce_after_checkout_validation', function ($data, $errors) {
     }
 }, 10, 2);
 
+// "… is a required field" with the label as the visitor read it, not the
+// markup behind it.
+add_filter('woocommerce_checkout_required_field_notice', function ($notice, $label) {
+    return sprintf('%s is a required field.', '<strong>' . esc_html(bv_plain_label((string) $label)) . '</strong>');
+}, 10, 2);
+
 // Server side: at order placement, billing takes the shipping address
 // wherever billing is empty, so orders carry a consistent address even if
 // the browser-side mirror never ran.
@@ -205,17 +293,15 @@ add_action('woocommerce_checkout_create_order', function ($order, $data) {
     $order->update_meta_data('_bv_delivery', bv_delivery_mode($data));
 }, 10, 2);
 
-// Browser side: toggle the mode class on the form, and keep the hidden
-// billing fields equal to the shipping fields. Country is copied first
-// (WooCommerce rebuilds the state list on that change), then the rest; each
-// copy fires `change` so listeners on the billing fields — WooCommerce's
-// order-review refresh, the FedEx Hold-at-Location lookup — see the update.
-add_action('wp_enqueue_scripts', function () {
-    if (!function_exists('is_checkout') || !is_checkout()) {
-        return;
-    }
+// Browser side: toggle the mode class on the body, place the shipping
+// plugin's location field in the grid, and keep the hidden billing fields
+// equal to the shipping fields. Country is copied first (WooCommerce
+// rebuilds the state list on that change), then the rest; each copy fires
+// `change` so listeners on the billing fields — WooCommerce's order-review
+// refresh, the FedEx Hold-at-Location lookup — see the update.
+function bv_checkout_script() {
     $keys = wp_json_encode(BV_MIRRORED_ADDRESS_KEYS);
-    $js = <<<JS
+    return <<<JS
 (function ($) {
   if (!$) return;
   var KEYS = {$keys};
@@ -237,16 +323,44 @@ add_action('wp_enqueue_scripts', function () {
       syncing = false;
     }
   }
+  // The grid item that carries `el`: the first ancestor under the grid that
+  // is not a display:contents wrapper.
+  function gridItem(el, root) {
+    var chain = [], e;
+    for (e = el; e && e !== root; e = e.parentElement) chain.push(e);
+    if (e !== root) return null;
+    for (var i = chain.length - 1; i >= 0; i--) {
+      if (getComputedStyle(chain[i]).display !== 'contents') return chain[i];
+    }
+    return el;
+  }
+  // The shipping plugin's Hold-at-Location field, wherever it put it.
+  function markLocation() {
+    var root = document.getElementById('customer_details');
+    if (!root) return;
+    var el = root.querySelector('[name*="hold_at_location"], [id*="hold_at_location"], [name*="hold-at-location"], [id*="hold-at-location"]');
+    if (!el) {
+      $(root).find('label').each(function () {
+        if (!el && /hold[_ -]?at[_ -]?location/i.test($(this).text())) el = this;
+      });
+    }
+    if (!el) return;
+    var item = gridItem(el, root);
+    if (!item || item === root) return;
+    $(root).find('.bv-loc').not(item).removeClass('bv-loc');
+    $(item).addClass('bv-loc');
+  }
   function applyMode() {
-    var form = $('form.checkout');
-    var mode = form.find('input[name="bv_delivery"]:checked').val() || 'hal';
-    $(document.body).toggleClass('bv-mode-hal', mode === 'hal').toggleClass('bv-mode-addr', mode === 'address');
-    $('#bv-card-hal').toggleClass('is-chosen', mode === 'hal');
-    $('#bv-card-addr').toggleClass('is-chosen', mode === 'address');
+    var mode = $('form.checkout input[name="bv_delivery"]:checked').val() || 'hal';
+    var hal = mode === 'hal';
+    $(document.body).toggleClass('bv-mode-hal', hal).toggleClass('bv-mode-addr', !hal);
+    $('#bv-card-hal').toggleClass('is-chosen', hal);
+    $('#bv-card-addr').toggleClass('is-chosen', !hal);
     // Street/town/state are only demanded of a delivery.
     ['#shipping_address_1_field', '#shipping_city_field', '#shipping_state_field'].forEach(function (sel) {
-      $(sel).toggleClass('validate-required', mode === 'address');
+      $(sel).toggleClass('validate-required', !hal);
     });
+    markLocation();
   }
   $(function () {
     var form = $('form.checkout');
@@ -258,17 +372,33 @@ add_action('wp_enqueue_scripts', function () {
       applyMode();
       $(document.body).trigger('update_checkout');
     });
-    $(document.body).on('updated_checkout', function () { syncAll(); applyMode(); });
+    $(document.body)
+      .on('updated_checkout', function () { syncAll(); applyMode(); })
+      .on('country_to_state_changed', applyMode);
     syncAll();
     applyMode();
   });
 })(window.jQuery);
 JS;
-    wp_add_inline_script('wc-checkout', $js);
-});
+}
+
+// Priority 20: after WooCommerce has registered wc-checkout (priority 10).
+add_action('wp_enqueue_scripts', function () {
+    if (!bv_is_checkout()) {
+        return;
+    }
+    if (wp_script_is('wc-checkout', 'registered')) {
+        wp_add_inline_script('wc-checkout', bv_checkout_script());
+        return;
+    }
+    // Belt and braces: print it ourselves if the handle is not there.
+    add_action('wp_print_footer_scripts', function () {
+        echo '<script>' . bv_checkout_script() . '</script>' . "\n";
+    }, 20);
+}, 20);
 
 add_action('wp_head', function () {
-    if (!function_exists('is_checkout') || !is_checkout()) {
+    if (!bv_is_checkout()) {
         return;
     }
     echo '<style>.woocommerce-checkout .form-row.bv-mirror{display:none !important}</style>' . "\n";
@@ -276,13 +406,20 @@ add_action('wp_head', function () {
 
 // Copy in voice.
 add_filter('gettext', function ($translated, $text, $domain) {
-    if ($domain !== 'woocommerce') {
-        return $translated;
+    if ($domain === 'woocommerce') {
+        $replacements = [
+            'Ship to a different address?' => 'where should we send it',
+            'Billing details' => 'your details',
+            'Place order' => 'send zec',
+        ];
+        return $replacements[$text] ?? $translated;
     }
-    $replacements = [
-        'Ship to a different address?' => 'where should we send it',
-        'Billing details' => 'your details',
-        'Place order' => 'send zec',
-    ];
-    return $replacements[$text] ?? $translated;
+    // The shipping plugin's strings, whatever text domain they use.
+    if ($text === 'FedEx Hold at Location') {
+        return 'nearby FedEx locations';
+    }
+    if ($text === 'Select FedEx Hold at Location') {
+        return 'choose a location';
+    }
+    return $translated;
 }, 10, 3);
