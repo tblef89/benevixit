@@ -202,7 +202,7 @@ const Terminal = (() => {
         filled++;
         const pct = Math.round((filled / total) * 100);
         const bar = '█'.repeat(filled) + '░'.repeat(total - filled);
-        div.textContent = bar + ' ' + (pct >= 100 ? 'done.' : pct + '%');
+        div.textContent = bar + ' ' + (pct >= 100 ? 'Done.' : pct + '%');
         scrollBottom();
         if (filled < total) {
           setTimeout(tick, interval);
@@ -219,12 +219,12 @@ const Terminal = (() => {
     const div = document.createElement('div');
     div.className = 'line copyable';
     div.textContent = text;
-    div.title = label || 'click to copy';
+    div.title = label || 'Click to copy';
     div.addEventListener('click', (e) => {
       e.stopPropagation();
       navigator.clipboard.writeText(text).then(() => {
         const orig = div.textContent;
-        div.textContent = '[ copied to clipboard ✓ ]';
+        div.textContent = '[ Copied to clipboard ✓ ]';
         div.classList.add('copied');
         setTimeout(() => {
           div.textContent = orig;

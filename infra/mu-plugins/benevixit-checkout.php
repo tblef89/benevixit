@@ -110,13 +110,13 @@ add_filter('woocommerce_default_address_fields', function ($fields) {
         return $fields;
     }
     $labels = [
-        'address_1' => 'street address',
-        'address_2' => 'apartment, suite, unit (optional)',
-        'city'      => 'town / city',
-        'state'     => 'state',
-        'postcode'  => 'zip code',
-        'country'   => 'country',
-        'phone'     => bv_mode_label('phone (optional) <small>— FedEx texts you when it is ready</small>', 'phone (optional)'),
+        'address_1' => 'Street address',
+        'address_2' => 'Apartment, suite, unit (optional)',
+        'city'      => 'Town / city',
+        'state'     => 'State',
+        'postcode'  => 'ZIP code',
+        'country'   => 'Country',
+        'phone'     => bv_mode_label('Phone (optional) <small>— FedEx texts you when it is ready</small>', 'Phone (optional)'),
     ];
     foreach ($labels as $key => $label) {
         if (!isset($fields[$key])) {
@@ -125,14 +125,14 @@ add_filter('woocommerce_default_address_fields', function ($fields) {
         $fields[$key]['label'] = $label;
         // A visible label, not a placeholder standing in for one.
         $fields[$key]['label_class'] = [];
-        $fields[$key]['placeholder'] = $key === 'address_1' ? 'house number and street name' : '';
+        $fields[$key]['placeholder'] = $key === 'address_1' ? 'House number and street name' : '';
     }
     if (isset($fields['phone'])) {
         $fields['phone']['required'] = false;
     }
     if (isset($fields['postcode'])) {
         $fields['postcode']['required'] = true;
-        $fields['postcode']['description'] = 'for nearby FedEx locations and rates';
+        $fields['postcode']['description'] = 'For nearby FedEx locations and rates';
     }
     return $fields;
 });
@@ -158,7 +158,7 @@ add_filter('woocommerce_checkout_fields', function ($fields) {
     // Billing: the email (visible) plus the address fields (hidden, optional,
     // filled by the mirror).
     $email = $fields['billing']['billing_email'];
-    $email['label'] = 'email for order updates';
+    $email['label'] = 'Email for order updates';
     $email['priority'] = 10;
     $billing = ['billing_email' => $email];
     foreach (BV_MIRRORED_ADDRESS_KEYS as $key) {
@@ -184,10 +184,10 @@ add_filter('woocommerce_checkout_fields', function ($fields) {
     // labels come through the locale, above.)
     $s = &$fields['shipping'];
     if (isset($s['shipping_first_name'])) {
-        $s['shipping_first_name']['label'] = bv_mode_label('legal first name, as on your ID', 'a first name for the parcel');
+        $s['shipping_first_name']['label'] = bv_mode_label('Legal first name, as on your ID', 'A first name for the parcel');
     }
     if (isset($s['shipping_last_name'])) {
-        $s['shipping_last_name']['label'] = bv_mode_label('legal last name', 'a last name');
+        $s['shipping_last_name']['label'] = bv_mode_label('Legal last name', 'A last name');
     }
     if (isset($s['shipping_postcode'])) {
         $s['shipping_postcode']['required'] = true;
@@ -207,7 +207,7 @@ add_filter('woocommerce_checkout_fields', function ($fields) {
     foreach (['billing', 'shipping'] as $group) {
         foreach ($fields[$group] ?? [] as $name => $field) {
             if (bv_is_hal_key($name)) {
-                $fields[$group][$name]['label'] = 'nearby FedEx locations';
+                $fields[$group][$name]['label'] = 'Nearby FedEx locations';
             }
         }
     }
@@ -217,6 +217,9 @@ add_filter('woocommerce_checkout_fields', function ($fields) {
 // The shipping form is always the address form — no "different address?"
 // toggle (the checkbox itself is hidden by the theme).
 add_filter('woocommerce_ship_to_different_address_checked', '__return_true');
+
+// No coupons: nothing to "click here to enter" on the cart or the checkout.
+add_filter('woocommerce_coupons_enabled', '__return_false');
 
 // The mode class on <body>, set server-side (HAL by default) so the layout
 // is right before — or without — any script; the checkout script toggles it.
@@ -232,15 +235,15 @@ add_action('woocommerce_after_checkout_billing_form', function () {
     $mode = bv_delivery_mode();
     ?>
     <div class="bv-mode">
-      <h3 class="bv-h" id="bv-h-mode">how should it reach you <small>one of these, never both.</small></h3>
+      <h3 class="bv-h" id="bv-h-mode">How should it reach you <small>One of these, never both.</small></h3>
       <label class="bv-card<?php echo $mode === 'hal' ? ' is-chosen' : ''; ?>" id="bv-card-hal">
         <input type="radio" name="bv_delivery" value="hal" <?php checked($mode, 'hal'); ?>>
-        <span class="bv-card-title">hold at a FedEx location</span>
+        <span class="bv-card-title">Hold at a FedEx location</span>
         <span class="bv-card-text">Use your legal name, which FedEx will verify with your ID at pickup. No need to share your address.</span>
       </label>
       <label class="bv-card<?php echo $mode === 'address' ? ' is-chosen' : ''; ?>" id="bv-card-addr">
         <input type="radio" name="bv_delivery" value="address" <?php checked($mode, 'address'); ?>>
-        <span class="bv-card-title">deliver to an address</span>
+        <span class="bv-card-title">Deliver to an address</span>
         <span class="bv-card-text">Tell us the address you'd like it delivered. Exact legal name not required.</span>
       </label>
     </div>
@@ -266,7 +269,7 @@ add_action('woocommerce_after_checkout_validation', function ($data, $errors) {
         $errors->remove($key . '_validation');
     }
     if (bv_posted_hal_choice($data) === '' && bv_posted_hal_choice($_POST) === '') {
-        $errors->add('bv_hal_required', 'choose a FedEx location to hold it — enter your zip code and pick one from the list.');
+        $errors->add('bv_hal_required', 'Choose a FedEx location to hold it — enter your ZIP code and pick one from the list.');
     }
 }, 10, 2);
 
@@ -408,18 +411,18 @@ add_action('wp_head', function () {
 add_filter('gettext', function ($translated, $text, $domain) {
     if ($domain === 'woocommerce') {
         $replacements = [
-            'Ship to a different address?' => 'where should we send it',
-            'Billing details' => 'your details',
-            'Place order' => 'send zec',
+            'Ship to a different address?' => 'Where should we send it',
+            'Billing details' => 'Your details',
+            'Place order' => 'Send ZEC',
         ];
         return $replacements[$text] ?? $translated;
     }
     // The shipping plugin's strings, whatever text domain they use.
     if ($text === 'FedEx Hold at Location') {
-        return 'nearby FedEx locations';
+        return 'Nearby FedEx locations';
     }
     if ($text === 'Select FedEx Hold at Location') {
-        return 'choose a location';
+        return 'Choose a location';
     }
     return $translated;
 }, 10, 3);
