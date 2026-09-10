@@ -56,7 +56,16 @@ body {
    The grain layer is a tiling SVG noise at ~4% — paper you can almost feel. */
 html {
   background-color: var(--paper);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  /* The sheet itself: the fibre and the slow cloud of thickness variation
+     are painted on the page and scroll with it, so the paper is continuous
+     however long the page — only the light (body::after) stays fixed. */
+  background-image:
+    var(--paper-fibre-lo),
+    var(--paper-fibre-hi),
+    var(--paper-cloud),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-position: calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5), 0 0, 0 0, 0 0;
+  background-size: 512px 512px, 512px 512px, 1024px 1024px, 240px 240px;
 }
 
 a { color: var(--accent); }
@@ -108,9 +117,6 @@ body::after {
   background:
     var(--paper-tooth-lo) 0 0 / 240px 240px,
     var(--paper-tooth-hi) 0 0 / 240px 240px,
-    var(--paper-fibre-lo) calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5) / 512px 512px,
-    var(--paper-fibre-hi) 0 0 / 512px 512px,
-    var(--paper-cloud) 0 0 / 1024px 1024px,
     radial-gradient(110% 80% at var(--light-x) var(--light-y),
       rgba(255, 251, 240, calc(var(--light-strength) * 0.55)) 0%,
       rgba(255, 251, 240, 0) 62%),
@@ -695,11 +701,58 @@ body.bv-mode-addr .bv-lbl-addr { display: inline; }
 .woocommerce-checkout #order_review_heading,
 .woocommerce-checkout #order_review { max-width: 52rem; margin-left: auto; margin-right: auto; }
 .woocommerce-checkout #order_review_heading { margin-top: 2rem; }
-.woocommerce-checkout table.shop_table { width: 100%; margin-bottom: 1.5rem; }
+/* The order, set with air: no box, hairlines between lines, the amounts
+   ranged right in a column of their own. */
+.woocommerce-checkout table.shop_table {
+  width: 100%;
+  margin-bottom: 2rem;
+  border: 0 !important;
+  border-collapse: collapse;
+  font-size: 1.05rem;
+}
 .woocommerce-checkout table.shop_table th,
-.woocommerce-checkout table.shop_table td { padding: 0.6rem 0.9rem; text-align: left; vertical-align: top; }
-.woocommerce-checkout table.shop_table tfoot th,
+.woocommerce-checkout table.shop_table td {
+  padding: 1.1rem 0.25rem;
+  text-align: left;
+  vertical-align: top;
+  border: 0 !important;
+  border-bottom: 1px solid var(--line) !important;
+  line-height: 1.5;
+}
+.woocommerce-checkout table.shop_table thead th {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  padding-top: 0;
+}
+.woocommerce-checkout table.shop_table th:last-child,
+.woocommerce-checkout table.shop_table td:last-child,
+.woocommerce-checkout table.shop_table .product-total,
+.woocommerce-checkout table.shop_table tfoot td {
+  text-align: right;
+  white-space: nowrap;
+  width: 11rem;
+}
+.woocommerce-checkout table.shop_table tbody td { color: var(--ink); }
+.woocommerce-checkout table.shop_table tfoot th { color: var(--ink-soft); font-weight: 400; }
 .woocommerce-checkout table.shop_table tfoot td { color: var(--ink); }
+.woocommerce-checkout table.shop_table tfoot tr.order-total th,
+.woocommerce-checkout table.shop_table tfoot tr.order-total td {
+  font-size: 1.15rem;
+  color: var(--ink);
+  border-bottom: 0 !important;
+  padding-top: 1.4rem;
+}
+.woocommerce-checkout table.shop_table ul#shipping_method { list-style: none; margin: 0; padding: 0; }
+.woocommerce-checkout table.shop_table ul#shipping_method li { margin: 0 0 0.5rem; white-space: normal; }
+.woocommerce-checkout table.shop_table ul#shipping_method label { color: var(--ink); }
+@media (max-width: 700px) {
+  .woocommerce-checkout table.shop_table th,
+  .woocommerce-checkout table.shop_table td { padding: 1.25rem 0; display: table-cell; }
+  .woocommerce-checkout table.shop_table th:last-child,
+  .woocommerce-checkout table.shop_table td:last-child { width: 7rem; }
+}
 #payment {
   background: transparent !important;
   border: 1px solid var(--line);
@@ -803,9 +856,6 @@ html.bv-night body::after {
   background:
     var(--paper-tooth-lo) 0 0 / 240px 240px,
     var(--paper-tooth-hi) 0 0 / 240px 240px,
-    var(--paper-fibre-lo) calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5) / 512px 512px,
-    var(--paper-fibre-hi) 0 0 / 512px 512px,
-    var(--paper-cloud) 0 0 / 1024px 1024px,
     /* The lamp: a generous warm pool low on the page, the sheet visibly
        cream where the light falls, falling off into the dark of the room
        toward the far corner. */
@@ -822,9 +872,12 @@ html.bv-night body::after {
   /* A phone's pixels are the same size as a monitor's, but the sheet is a
      quarter the width: scale the grain down so the fibre reads as fibre
      rather than as a coarse texture. */
+  html {
+    background-size: 320px 320px, 320px 320px, 640px 640px, 150px 150px;
+  }
   body::after,
   html.bv-night body::after {
-    background-size: 150px 150px, 150px 150px, 320px 320px, 320px 320px, 640px 640px, auto, auto, auto;
+    background-size: 150px 150px, 150px 150px, auto, auto, auto;
   }
 }
 
