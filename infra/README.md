@@ -48,6 +48,36 @@ verification is live as soon as WordPress boots, and updates ship via
 4. Settings worth setting: Permalinks → "Post name"; disable comments;
    Woo → Settings → Accounts: allow guest checkout, do NOT force accounts.
 
+## 3b. Mail
+
+The WordPress container has no mail transport: `wp_mail()` hands the
+message to PHP's `mail()`, which has nowhere to send it, and every order
+email is dropped silently. `infra/mu-plugins/benevixit-mail.php` routes
+`wp_mail()` over authenticated SMTP instead, configured from `.env`.
+
+1. Pick a sender. Anything with SMTP + username/password works: the host
+   of the `keeper@benevixit.com` mailbox (Fastmail, Migadu…) is the
+   simplest — one vendor, replies land in the same box; a transactional
+   service (Postmark, SES, Resend) if volume or deliverability ever matters.
+2. In `.env`: `BV_SMTP_HOST`, `BV_SMTP_PORT` (587 STARTTLS / 465 TLS),
+   `BV_SMTP_USER`, `BV_SMTP_PASS` (an app password, not the mailbox
+   password), `BV_MAIL_FROM`, `BV_MAIL_FROM_NAME`. Then
+   `docker compose up -d` — env is fixed when the container is created,
+   so a `.env` edit alone changes nothing.
+3. DNS at Cloudflare, per the provider's instructions: **SPF** (a TXT on
+   `benevixit.com` naming the provider), **DKIM** (the provider's CNAME or
+   TXT records), and **DMARC** (`_dmarc` TXT, `v=DMARC1; p=quarantine;`
+   is a sane start). Without these the mail sends but lands in spam.
+4. Test: signed in as an administrator, open
+   `https://benevixit.com/wp-admin/?bv_mail_test=1`. It sends one message
+   to the site's admin email and prints the transport, the from address,
+   and the server's answer. A failure also lands in
+   `docker compose logs wordpress` as `bv-mail:`.
+5. WooCommerce → Settings → Emails: sender name/address to match
+   `BV_MAIL_FROM`; **New order** (to you) and **Processing order** (to the
+   customer) enabled. Re-send on an existing order with Order actions →
+   "Send order details to customer" to test without placing another.
+
 ## 4. The product
 
 1. Add product: **the herringbone cap** — slug must be `herringbone-cap`
