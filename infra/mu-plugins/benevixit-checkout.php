@@ -17,7 +17,7 @@
  * the choice cards, per-mode labels, and the validation that goes with them.
  *
  * A Hold-at-Location order ends up with the FedEx location as its shipping
- * address (see woocommerce_checkout_order_created below): the shipping
+ * address (see woocommerce_checkout_order_processed below): the shipping
  * plugin ships to whatever the order's shipping address says, and FedEx
  * requires a street, a city and a phone on every hold shipment.
  *
@@ -322,23 +322,42 @@ function bv_parse_hal_location($value) {
 // order's shipping (and hidden billing) address, with the location's name
 // as the company line — which is what a hold label reads anyway. The
 // visitor's own address was never asked for.
-add_action('woocommerce_checkout_order_created', function ($order) {
-    if ($order->get_meta('_bv_delivery') !== 'hal') {
+//
+// This runs at the very end of checkout processing, on a copy of the order
+// read back from the database, so that whatever the shipping plugin saved
+// — through its own order object, or as post meta — is visible. Every
+// candidate value (saved meta first, then the posted field) is tried until
+// one parses as an address.
+add_action('woocommerce_checkout_order_processed', function ($order_id) {
+    $order = wc_get_order($order_id);
+    if (!$order || $order->get_meta('_bv_delivery') !== 'hal') {
         return;
     }
-    $raw = '';
+    $candidates = [];
     foreach ($order->get_meta_data() as $meta) {
         if (bv_is_hal_key($meta->key) && is_scalar($meta->value) && trim((string) $meta->value) !== '') {
-            $raw = (string) $meta->value;
+            $candidates['meta ' . $meta->key] = (string) $meta->value;
+        }
+    }
+    foreach ($_POST as $key => $value) {
+        if (bv_is_hal_key($key) && is_scalar($value) && trim((string) $value) !== '') {
+            $candidates['posted ' . $key] = wp_unslash((string) $value);
+        }
+    }
+    $loc = null;
+    $source = '';
+    foreach ($candidates as $source => $raw) {
+        $loc = bv_parse_hal_location($raw);
+        if ($loc !== null) {
             break;
         }
     }
-    if ($raw === '') {
-        $raw = bv_posted_hal_choice($_POST);
-    }
-    $loc = bv_parse_hal_location($raw);
     if ($loc === null) {
-        $order->add_order_note('bene vixit: could not read the FedEx location into the shipping address — fill it in before creating the shipment. Raw: ' . sanitize_text_field($raw));
+        $seen = [];
+        foreach ($candidates as $source => $raw) {
+            $seen[] = $source . ' = "' . sanitize_text_field($raw) . '"';
+        }
+        $order->add_order_note('bene vixit: could not read the FedEx location into the shipping address — fill it in by hand before creating the shipment. ' . ($seen ? 'Seen: ' . implode('; ', $seen) : 'No location value was found on the order or in the posted checkout.'));
         $order->save();
         return;
     }
@@ -352,9 +371,9 @@ add_action('woocommerce_checkout_order_created', function ($order) {
     }
     $order->set_shipping_address_2('');
     $order->set_billing_address_2('');
-    $order->add_order_note('bene vixit: Hold at Location — shipping address set to ' . $loc['company'] . ', ' . $loc['address_1'] . ', ' . $loc['city'] . ' ' . $loc['state'] . ' ' . $loc['postcode'] . '.');
+    $order->add_order_note('bene vixit: Hold at Location — shipping address set to ' . $loc['company'] . ', ' . $loc['address_1'] . ', ' . $loc['city'] . ' ' . $loc['state'] . ' ' . $loc['postcode'] . ' (from ' . $source . ').');
     $order->save();
-}, 20);
+}, 100);
 
 // "… is a required field" with the label as the visitor read it, not the
 // markup behind it.
