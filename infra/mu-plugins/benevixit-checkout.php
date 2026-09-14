@@ -16,6 +16,11 @@
  * both"): the DOM WooCommerce renders is left intact; this file only adds
  * the choice cards, per-mode labels, and the validation that goes with them.
  *
+ * A Hold-at-Location order ends up with the FedEx location as its shipping
+ * address (see woocommerce_checkout_order_created below): the shipping
+ * plugin ships to whatever the order's shipping address says, and FedEx
+ * requires a street, a city and a phone on every hold shipment.
+ *
  * Two WooCommerce behaviours shape how this is written:
  *  - address-i18n.js re-applies the *locale* label, placeholder and required
  *    state to address_1/address_2/city/state/postcode/country/phone every
@@ -116,7 +121,7 @@ add_filter('woocommerce_default_address_fields', function ($fields) {
         'state'     => 'State',
         'postcode'  => 'ZIP code',
         'country'   => 'Country',
-        'phone'     => bv_mode_label('Phone (optional) <small>— FedEx texts you when it is ready</small>', 'Phone (optional)'),
+        'phone'     => bv_mode_label('Phone <small>— FedEx texts you when it is ready to collect</small>', 'Phone (optional)'),
     ];
     foreach ($labels as $key => $label) {
         if (!isset($fields[$key])) {
@@ -271,7 +276,80 @@ add_action('woocommerce_after_checkout_validation', function ($data, $errors) {
     if (bv_posted_hal_choice($data) === '' && bv_posted_hal_choice($_POST) === '') {
         $errors->add('bv_hal_required', 'Choose a FedEx location to hold it — enter your ZIP code and pick one from the list.');
     }
+    // FedEx will not create a Hold-at-Location shipment without a recipient
+    // phone number: it is how they say the parcel is ready.
+    if (trim((string) ($data['shipping_phone'] ?? '')) === '') {
+        $errors->add('bv_hal_phone_required', 'A phone number is needed for a FedEx pickup — FedEx texts you when it is ready to collect.');
+    }
 }, 10, 2);
+
+// The chosen location, as the shipping plugin posts and saves it:
+// "Name, Street[, Street 2], City, ST, ZIP, CC". Returns null unless it
+// parses cleanly.
+function bv_parse_hal_location($value) {
+    $parts = array_map('trim', explode(',', (string) $value));
+    if (count($parts) < 6) {
+        return null;
+    }
+    $country  = strtoupper(array_pop($parts));
+    $postcode = array_pop($parts);
+    $state    = strtoupper(array_pop($parts));
+    $city     = array_pop($parts);
+    $name     = array_shift($parts);
+    $street   = implode(', ', $parts);
+    if ($street === '' || $city === '' || !preg_match('/^[A-Z]{2}$/', $country) || !preg_match('/^[A-Z0-9 -]{3,10}$/', $postcode)) {
+        return null;
+    }
+    return [
+        'company'   => sanitize_text_field($name),
+        'address_1' => sanitize_text_field($street),
+        'city'      => sanitize_text_field($city),
+        'state'     => sanitize_text_field($state),
+        'postcode'  => sanitize_text_field($postcode),
+        'country'   => sanitize_text_field($country),
+    ];
+}
+
+// A Hold-at-Location order ships TO the FedEx location: the shipping plugin
+// sends the order's shipping address as the recipient (with the hold as a
+// special service on top), and FedEx rejects an empty street, city or
+// phone. So once the order exists, the location's address becomes the
+// order's shipping (and hidden billing) address, with the location's name
+// as the company line — which is what a hold label reads anyway. The
+// visitor's own address was never asked for.
+add_action('woocommerce_checkout_order_created', function ($order) {
+    if ($order->get_meta('_bv_delivery') !== 'hal') {
+        return;
+    }
+    $raw = '';
+    foreach ($order->get_meta_data() as $meta) {
+        if (bv_is_hal_key($meta->key) && is_scalar($meta->value) && trim((string) $meta->value) !== '') {
+            $raw = (string) $meta->value;
+            break;
+        }
+    }
+    if ($raw === '') {
+        $raw = bv_posted_hal_choice($_POST);
+    }
+    $loc = bv_parse_hal_location($raw);
+    if ($loc === null) {
+        $order->add_order_note('bene vixit: could not read the FedEx location into the shipping address — fill it in before creating the shipment. Raw: ' . sanitize_text_field($raw));
+        $order->save();
+        return;
+    }
+    foreach (['shipping', 'billing'] as $type) {
+        foreach ($loc as $key => $value) {
+            $setter = "set_{$type}_{$key}";
+            if (method_exists($order, $setter)) {
+                $order->{$setter}($value);
+            }
+        }
+    }
+    $order->set_shipping_address_2('');
+    $order->set_billing_address_2('');
+    $order->add_order_note('bene vixit: Hold at Location — shipping address set to ' . $loc['company'] . ', ' . $loc['address_1'] . ', ' . $loc['city'] . ' ' . $loc['state'] . ' ' . $loc['postcode'] . '.');
+    $order->save();
+}, 20);
 
 // "… is a required field" with the label as the visitor read it, not the
 // markup behind it.
@@ -359,10 +437,12 @@ function bv_checkout_script() {
     $(document.body).toggleClass('bv-mode-hal', hal).toggleClass('bv-mode-addr', !hal);
     $('#bv-card-hal').toggleClass('is-chosen', hal);
     $('#bv-card-addr').toggleClass('is-chosen', !hal);
-    // Street/town/state are only demanded of a delivery.
+    // Street/town/state are only demanded of a delivery; the phone only of
+    // a pickup (FedEx needs it to say the parcel is ready).
     ['#shipping_address_1_field', '#shipping_city_field', '#shipping_state_field'].forEach(function (sel) {
       $(sel).toggleClass('validate-required', !hal);
     });
+    $('#shipping_phone_field').toggleClass('validate-required', hal);
     markLocation();
   }
   $(function () {
