@@ -44,13 +44,21 @@ add_action('phpmailer_init', function ($phpmailer) {
     $phpmailer->Timeout    = 15;
 });
 
-// The envelope: who mail is from, for everything WordPress sends that does
-// not set its own (WooCommerce's order emails take theirs from
-// WooCommerce → Settings → Emails).
+// The envelope: who mail is from. One source of truth — the environment —
+// for WordPress's own mail and for WooCommerce's order emails alike, which
+// otherwise take theirs from WooCommerce → Settings → Emails. A provider
+// that signs for the sending domain (Cloudflare Email Service rejects any
+// other domain outright) must never see a stale address from the database.
 add_filter('wp_mail_from', function ($from) {
     return bv_mail_env('BV_MAIL_FROM', $from);
 });
 add_filter('wp_mail_from_name', function ($name) {
+    return bv_mail_env('BV_MAIL_FROM_NAME', $name);
+});
+add_filter('woocommerce_email_from_address', function ($from) {
+    return bv_mail_env('BV_MAIL_FROM', $from);
+});
+add_filter('woocommerce_email_from_name', function ($name) {
     return bv_mail_env('BV_MAIL_FROM_NAME', $name);
 });
 
