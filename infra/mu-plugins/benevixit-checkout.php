@@ -284,19 +284,24 @@ add_action('woocommerce_after_checkout_validation', function ($data, $errors) {
 }, 10, 2);
 
 // The chosen location, as the shipping plugin posts and saves it:
-// "Name, Street[, Street 2], City, ST, ZIP, CC". Returns null unless it
-// parses cleanly.
+// "Name, Street[, Street 2], City, ST, ZIP, CC" — or the same without the
+// name, as its order screen shows it. Returns null unless it parses cleanly.
 function bv_parse_hal_location($value) {
     $parts = array_map('trim', explode(',', (string) $value));
-    if (count($parts) < 6) {
+    if (count($parts) < 5) {
         return null;
     }
     $country  = strtoupper(array_pop($parts));
     $postcode = array_pop($parts);
     $state    = strtoupper(array_pop($parts));
     $city     = array_pop($parts);
-    $name     = array_shift($parts);
-    $street   = implode(', ', $parts);
+    // What is left is the street, preceded by the location's name unless
+    // the first part already starts with a house number.
+    $name = '';
+    if (count($parts) > 1 && !preg_match('/^\d/', $parts[0])) {
+        $name = array_shift($parts);
+    }
+    $street = implode(', ', $parts);
     if ($street === '' || $city === '' || !preg_match('/^[A-Z]{2}$/', $country) || !preg_match('/^[A-Z0-9 -]{3,10}$/', $postcode)) {
         return null;
     }
