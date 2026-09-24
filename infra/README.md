@@ -103,10 +103,72 @@ Update the KV manifest (`GATE_KV` → `manifest`):
 3. Add to cart → checkout → pay a real minimal ZEC amount via CipherPay.
 4. Order appears in Woo admin; status updates when payment confirms
    (CipherPay webhook); confirmation email arrives.
-5. Fulfil, then purge the order's address (Phase 2.5: automate purge à la
-   shisaku's purge-addresses).
+5. Fulfil: create the FedEx shipment, drop the parcel off, mark the order
+   **Completed** (the customer gets the tracking email). The purge below
+   takes it from there.
 
 When step 4 holds end-to-end, the store is launchable.
+
+## 7. The purge (shipping information deleted after a week)
+
+`infra/mu-plugins/benevixit-purge.php` deletes everything that identifies
+the customer or where the parcel went, seven days after the order is done
+with. Accounting keeps the order; it does not keep the person.
+
+| Order status | Purged when |
+| --- | --- |
+| Completed | 7 days after it was marked Completed |
+| Cancelled, Failed, Refunded | 7 days after the last change |
+| Pending (never paid) | 7 days after it was placed |
+| Processing, On hold | never — still being fulfilled |
+
+**Goes:** every name, address, phone and email (shipping and the hidden
+billing mirror), IP address and browser, the chosen FedEx Hold-at-Location,
+FedEx label and shipment data that carries the recipient, order-attribution
+data, all order notes, and the customer's analytics row. Copies in the
+order-storage tables WooCommerce isn't using are overwritten too, so a
+direct database query finds nothing either way.
+**Stays:** items, totals, the ZEC transaction id, payment status, the
+delivery choice (hold or address), the FedEx tracking number, the dates.
+
+It runs daily as an Action Scheduler job (WooCommerce → Status → Scheduled
+actions, group `bene-vixit`). Each order goes through WooCommerce's own
+privacy eraser plus our additions, is marked `_bv_purged`, and gets one
+note. Only order ids reach the log (`docker compose logs wordpress | grep
+bv-purge`). WooCommerce logs are kept 7 days. Keep the FedEx plugin's
+**debug mode off** in production: it prints full requests on screen and
+into logs.
+
+**The checkout promise** ("We delete all shipping information from our
+records within one week of delivery.") shows only while the job is
+demonstrably working: a run finished in the last two days with no
+failures. If the job stops, the promise disappears by itself.
+
+**Make sure it runs.** WordPress's scheduler only wakes on traffic. Add
+one line to the VPS host's crontab (`crontab -e`) so it wakes every 15
+minutes regardless:
+
+```
+*/15 * * * * docker compose -f /opt/benevixit/infra/docker-compose.yml exec -T wordpress php -r 'file_get_contents("http://localhost/wp-cron.php");' >/dev/null 2>&1
+```
+
+**Audit.** Signed in as an administrator:
+
+- `https://benevixit.com/wp-admin/?bv_purge=preview` lists storage mode,
+  next and last run, whether the promise is showing, what is due now
+  (order ids and meta key names, never values) and what comes due when.
+  A "Run the purge now" link at the bottom runs it immediately.
+- On any order that isn't Processing or On hold, **Order actions →
+  Purge shipping information now** purges it early (it runs within a
+  minute). Useful for testing, or when someone asks.
+- Where WP-CLI is available: `wp bv purge --dry-run`, then `wp bv purge`.
+
+**Outside the database, not covered by the purge:** the New order
+emails in the keeper@ mailbox, CipherPay's copy of the invoice (the plugin
+sends the billing name and shipping address with each invoice), and
+FedEx's own records. The first is a mailbox habit. The second has no
+setting in their plugin, but it can be stripped from the request in our
+own code if we decide to.
 
 ## Pricing note
 
