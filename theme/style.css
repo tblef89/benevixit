@@ -53,19 +53,10 @@ body {
 
 /* Background on html ONLY: a body background paints OVER negative-z children,
    which would hide the watermark behind solid paper.
-   The grain layer is a tiling SVG noise at ~4% — paper you can almost feel. */
+   The sheet is flat, as on the gate: paper at arm's length is smooth; what
+   makes it read as paper is the light across it (body::after), not a grain. */
 html {
   background-color: var(--paper);
-  /* The sheet itself: the fibre and the slow cloud of thickness variation
-     are painted on the page and scroll with it, so the paper is continuous
-     however long the page — only the light (body::after) stays fixed. */
-  background-image:
-    var(--paper-fibre-lo),
-    var(--paper-fibre-hi),
-    var(--paper-cloud),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-  background-position: calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5), 0 0, 0 0, 0 0;
-  background-size: 512px 512px, 512px 512px, 1024px 1024px, 240px 240px;
 }
 
 a { color: var(--accent); }
@@ -88,19 +79,11 @@ a { color: var(--accent); }
   --press-hi: rgba(255, 255, 250, calc(0.6 * var(--relief)));
 }
 
-/* ── Paper ──
-   Handmade sheet, three scales at once: a fine tooth, a fibrous mid-scale
-   mottle, and a slow cloud of thickness variation. The fibre layer is one
-   noise field drawn twice — a lit copy in place and a shadow copy shifted
-   by the sun's offset — so every clump of fibre is embossed by the same
-   light that presses the key. Tiles are tiny SVG turbulence, rasterised
-   once and cached. */
+/* ── Dither ──
+   Not a texture: pixel-scale noise at a few percent, too fine to see as
+   anything, laid over the light so its soft gradients never band. */
 :root {
-  --paper-fibre-hi: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='512'%20height='512'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.11'%20numOctaves='5'%20seed='7'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%201%200%200%200%200%201%200%200%200%200%201%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200.10%200.48'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-fibre-lo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='512'%20height='512'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.11'%20numOctaves='5'%20seed='7'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200.25%200%200%200%200%200.17%200%200%200%200%200.08%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200.06%200.26'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-tooth-hi: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='240'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.95'%20numOctaves='2'%20seed='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%201%200%200%200%200%201%200%200%200%200%201%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200%200%200.32'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-tooth-lo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='240'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.95'%20numOctaves='2'%20seed='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200.2%200%200%200%200%200.14%200%200%200%200%200.06%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200%200%200.20'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-cloud: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1024'%20height='1024'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.006'%20numOctaves='3'%20seed='11'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200.35%200%200%200%200%200.25%200%200%200%200%200.12%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200.03%200.055'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  --dither: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
 }
 
 /* Daylight across the paper: a pool where the window's light falls, a warm
@@ -112,11 +95,8 @@ body::after {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  /* The paper rides on top of the light: the surface dithers the soft
-     gradients so nothing bands, and the fibres catch the same sun. */
   background:
-    var(--paper-tooth-lo) 0 0 / 240px 240px,
-    var(--paper-tooth-hi) 0 0 / 240px 240px,
+    var(--dither) 0 0 / 128px 128px,
     radial-gradient(110% 80% at var(--light-x) var(--light-y),
       rgba(255, 251, 240, calc(var(--light-strength) * 0.55)) 0%,
       rgba(255, 251, 240, 0) 62%),
@@ -858,52 +838,29 @@ body.bv-mode-addr .bv-lbl-addr { display: inline; }
    lamp is lit. Even then it stays warm — dusk, not a basement. The media
    query below is the no-JS fallback for the same palette. */
 html.bv-night {
-  /* The room is dark; the paper is still paper. A warm umber sheet, lit
-     by the lamp below, with the grain tinted by lamplight rather than
-     flecked white. */
+  /* The room is dark; the paper is still paper: a warm umber sheet, lit
+     by the lamp below. */
   --paper: #2b251d;
   --ink: #ece6da;
   --ink-body: #cfc7b8;
   --ink-soft: #a89f8f;
   --accent: #b9a26e;
-  --line: #3a342a;
+  --line: #51483a; /* hairlines must still read by lamplight */
   --emboss-hi: rgba(255, 226, 180, calc(0.26 * var(--relief)));
   --emboss-lo: rgba(0, 0, 0, calc(0.5 * var(--relief)));
   --press-hi: rgba(255, 236, 200, 0.1);
   color-scheme: dark;
-  --paper-fibre-hi: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='512'%20height='512'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.11'%20numOctaves='5'%20seed='7'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%201%200%200%200%200%200.88%200%200%200%200%200.68%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200.04%200.15'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-fibre-lo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='512'%20height='512'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.11'%20numOctaves='5'%20seed='7'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200.05%200.19'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-tooth-hi: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='240'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.95'%20numOctaves='2'%20seed='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%201%200%200%200%200%200.9%200%200%200%200%200.72%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200%200%200.11'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-tooth-lo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='240'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.95'%20numOctaves='2'%20seed='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200%200%200.14'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-cloud: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1024'%20height='1024'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.006'%20numOctaves='3'%20seed='11'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200.03%200.07'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
 }
 html.bv-night body::after {
   background:
-    var(--paper-tooth-lo) 0 0 / 240px 240px,
-    var(--paper-tooth-hi) 0 0 / 240px 240px,
-    /* The lamp: a generous warm pool low on the page, the sheet visibly
-       cream where the light falls, falling off into the dark of the room
-       toward the far corner. */
+    var(--dither) 0 0 / 128px 128px,
+    /* The lamp: a soft warm pool low on the page, falling off into the
+       dark of the room. Gentle — on a flat sheet a strong pool reads as a
+       gradient, not as light. */
     radial-gradient(120% 100% at var(--light-x) var(--light-y),
-      rgba(255, 200, 128, 0.34) 0%,
-      rgba(255, 190, 115, 0.16) 38%,
-      rgba(255, 180, 100, 0) 72%),
-    radial-gradient(90% 80% at 8% 4%,
-      rgba(0, 0, 0, 0.32) 0%,
-      rgba(0, 0, 0, 0) 62%),
-    linear-gradient(rgba(255, 176, 96, 0.05), rgba(255, 176, 96, 0.05));
-}
-@media (max-width: 700px) {
-  /* A phone's pixels are the same size as a monitor's, but the sheet is a
-     quarter the width: scale the grain down so the fibre reads as fibre
-     rather than as a coarse texture. */
-  html {
-    background-size: 320px 320px, 320px 320px, 640px 640px, 150px 150px;
-  }
-  body::after,
-  html.bv-night body::after {
-    background-size: 150px 150px, 150px 150px, auto, auto, auto;
-  }
+      rgba(255, 200, 128, 0.22) 0%,
+      rgba(255, 190, 115, 0.08) 40%,
+      rgba(255, 180, 100, 0) 72%);
 }
 
 

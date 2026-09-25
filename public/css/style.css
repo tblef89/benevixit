@@ -46,22 +46,12 @@ html, body {
   font-feature-settings: 'onum' 1, 'liga' 1;
 }
 
-/* Background on html ONLY: a body background paints OVER negative-z children,
-   which would hide the watermark behind solid paper.
-   The grain layer is a tiling SVG noise at ~4% — imperceptible consciously,
-   but the eye registers "material" instead of a flat hex fill. */
+/* Background on html ONLY: a body background paints OVER negative-z children.
+   The sheet is flat. Paper at arm's length is smooth; what makes a sheet read
+   as paper is the light falling across it (body::after), never a grain. A
+   screen can render light honestly; it can only fake fibre. */
 html {
   background-color: var(--paper);
-  /* The sheet itself: the fibre and the slow cloud of thickness variation
-     are painted on the page and scroll with it, so the paper is continuous
-     however long the page — only the light (body::after) stays fixed. */
-  background-image:
-    var(--paper-fibre-lo),
-    var(--paper-fibre-hi),
-    var(--paper-cloud),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-  background-position: calc(var(--sun-dx) * 1.5) calc(var(--sun-dy) * 1.5), 0 0, 0 0, 0 0;
-  background-size: 512px 512px, 512px 512px, 1024px 1024px, 240px 240px;
 }
 
 #terminal, #site-footer, .page {
@@ -70,9 +60,9 @@ html {
 }
 
 #terminal {
-  max-width: 46rem;
+  max-width: 34rem;
   margin: 0 auto;
-  padding: 3rem 1.25rem 6rem;
+  padding: 3.2rem 1.25rem 6rem;
   min-height: 100%;
   overflow-y: auto;
 }
@@ -95,19 +85,11 @@ html {
   --press-hi: rgba(255, 255, 250, calc(0.6 * var(--relief)));
 }
 
-/* ── Paper ──
-   Handmade sheet, three scales at once: a fine tooth, a fibrous mid-scale
-   mottle, and a slow cloud of thickness variation. The fibre layer is one
-   noise field drawn twice — a lit copy in place and a shadow copy shifted
-   by the sun's offset — so every clump of fibre is embossed by the same
-   light that presses the key. Tiles are tiny SVG turbulence, rasterised
-   once and cached. */
+/* ── Dither ──
+   Not a texture: pixel-scale noise at a few percent, too fine to see as
+   anything, laid over the light so its soft gradients never band into rings. */
 :root {
-  --paper-fibre-hi: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='512'%20height='512'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.11'%20numOctaves='5'%20seed='7'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%201%200%200%200%200%201%200%200%200%200%201%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200.10%200.48'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-fibre-lo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='512'%20height='512'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.11'%20numOctaves='5'%20seed='7'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200.25%200%200%200%200%200.17%200%200%200%200%200.08%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200.06%200.26'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-tooth-hi: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='240'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.95'%20numOctaves='2'%20seed='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%201%200%200%200%200%201%200%200%200%200%201%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200%200%200.32'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-tooth-lo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='240'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.95'%20numOctaves='2'%20seed='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200.2%200%200%200%200%200.14%200%200%200%200%200.06%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200%200%200.20'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-cloud: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1024'%20height='1024'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.006'%20numOctaves='3'%20seed='11'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200.35%200%200%200%200%200.25%200%200%200%200%200.12%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200.03%200.055'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  --dither: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
 }
 
 /* Daylight across the paper: a pool where the window's light falls, a warm
@@ -119,11 +101,8 @@ body::after {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  /* The paper rides on top of the light: the surface dithers the soft
-     gradients so nothing bands, and the fibres catch the same sun. */
   background:
-    var(--paper-tooth-lo) 0 0 / 240px 240px,
-    var(--paper-tooth-hi) 0 0 / 240px 240px,
+    var(--dither) 0 0 / 128px 128px,
     radial-gradient(110% 80% at var(--light-x) var(--light-y),
       rgba(255, 251, 240, calc(var(--light-strength) * 0.55)) 0%,
       rgba(255, 251, 240, 0) 62%),
@@ -135,115 +114,129 @@ body::after {
       rgba(214, 160, 88, calc(var(--light-warm) * 0.1)));
 }
 
-/* The art, always present behind everything — not printed but pressed: a
-   blind emboss on the linen, lit by the hour. The element's own mask holds
-   only a whisper of ink (--wm-ink); the relief lives in its pseudo-elements:
-   a highlight sliver on the edge facing the light and a shadow sliver on the
-   far edge, each cut by subtracting the shape from itself shifted by the
-   sun's offset. The custom properties are read by dissolve.js so transition
-   particles land exactly on this element, relief and all. */
+/* ── The crest ──
+   The key at the head of the sheet, as a blind emboss: no ink, only relief.
+   Nothing is ever printed over it — ink on a raised die-stamp is the one
+   thing no real letterhead has. The relief is rendered the way paper takes
+   light: the mark's outline softened into a height map and lit from one
+   direction (SVG diffuse lighting), so the shoulders are soft and the
+   highlight leads. light.js turns that light with the visitor's hour; the
+   night filter is the same die under a lamp. The element carries
+   data-bv-art so the page transition (dissolve.js) starts and ends on it. */
 :root {
-  --wm-height: 72;
-  --wm-ink: 0.035;
-  --wm-art: url('/art/key.svg');
-  --wm-size: auto calc(var(--wm-height) * 1%);
-  --wm-px: 50%;
-  --wm-py: 50%;
+  --wm-ink: 0.035; /* the ink whisper the transition's particle copy uses */
 }
-.bv-watermark {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-color: color-mix(in srgb, var(--ink) calc(var(--wm-ink) * 100%), transparent);
-  -webkit-mask: var(--wm-art) no-repeat var(--wm-px) var(--wm-py) / var(--wm-size);
-  mask: var(--wm-art) no-repeat var(--wm-px) var(--wm-py) / var(--wm-size);
-}
-@supports (mask-composite: subtract) or (-webkit-mask-composite: source-out) {
-  .bv-watermark::before,
-  .bv-watermark::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    -webkit-mask-image: var(--wm-art), var(--wm-art);
-    mask-image: var(--wm-art), var(--wm-art);
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    -webkit-mask-size: var(--wm-size), var(--wm-size);
-    mask-size: var(--wm-size), var(--wm-size);
-    -webkit-mask-composite: source-out;
-    mask-composite: subtract;
-  }
-  .bv-watermark::before {
-    background-color: var(--emboss-hi);
-    -webkit-mask-position: var(--wm-px) var(--wm-py),
-      calc(var(--wm-px) + var(--sun-dx)) calc(var(--wm-py) + var(--sun-dy));
-    mask-position: var(--wm-px) var(--wm-py),
-      calc(var(--wm-px) + var(--sun-dx)) calc(var(--wm-py) + var(--sun-dy));
-  }
-  .bv-watermark::after {
-    background-color: var(--emboss-lo);
-    -webkit-mask-position: var(--wm-px) var(--wm-py),
-      calc(var(--wm-px) - var(--sun-dx)) calc(var(--wm-py) - var(--sun-dy));
-    mask-position: var(--wm-px) var(--wm-py),
-      calc(var(--wm-px) - var(--sun-dx)) calc(var(--wm-py) - var(--sun-dy));
-  }
-}
-/* During a transition the particle copy performs; the real element waits. */
-.bv-transit .bv-watermark { visibility: hidden; }
-
-
-.line { white-space: pre-wrap; word-break: break-word; min-height: 1.6em; }
-
-/* The printer's ornament: the key at 18px between hairlines, at the chapter
-   head above the epigraph — the clear band before the watermark begins. One
-   mark, used with discipline; restraint is the flourish. */
-.bv-fleuron {
+.crest {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 1rem;
-  margin: 0 auto 1.75rem;
+  margin: 0 auto 2.2rem;
 }
-.bv-fleuron::before,
-.bv-fleuron::after {
-  content: '';
-  width: 3rem;
-  height: 1px;
-  background: var(--line);
+.crest svg {
+  height: 132px;
+  width: auto;
+  overflow: visible;
 }
-.bv-fleuron span {
-  width: 18px;
-  height: 18px;
-  background-color: var(--ink);
-  opacity: 0.55;
-  /* key_mark.svg is the key with strokes weighted for 18px — the watermark's
-     hairline strokes vanish at fleuron size. */
-  -webkit-mask: url('/art/key_mark.svg') no-repeat center / contain;
-  mask: url('/art/key_mark.svg') no-repeat center / contain;
-}
+html.bv-night .crest image { filter: url(#bv-emboss-night); }
+.page .crest { margin-bottom: 2.4rem; }
+.page .crest svg { height: 84px; }
+/* During a transition the particle copy performs; the real crest waits. */
+.bv-transit [data-bv-art] { visibility: hidden; }
 
 /* The motto, given its due */
 .quote {
-  margin: 0 0 0.75rem;
-  font-size: 1.7rem;
-  line-height: 1.5;
+  margin: 0 0 0.4rem;
+  font-size: 1.9rem;
+  line-height: 1.4;
+  text-align: center;
 }
 .quote em { font-style: italic; }
 .quote .attrib {
-  font-size: 0.8rem;
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
   font-style: normal;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
   color: var(--ink-soft);
-  margin-top: 0.35rem;
+  margin-top: 0.6rem;
 }
-.line.keeper { color: var(--ink); }
-.line.visitor { color: var(--ink-soft); }
+/* The translation closes the letterhead; a short rule opens the letter. */
+.line.translation {
+  text-align: center;
+  margin-bottom: 1.6rem;
+}
+.line.translation::after {
+  content: '';
+  display: block;
+  width: 2.5rem;
+  height: 1px;
+  background: var(--line);
+  margin: 1.9rem auto 0;
+}
+/* The correspondence: the keeper writes upright in full ink; the visitor's
+   lines are italic, a step softer, set in from a short dash — two hands on
+   one sheet, no prompts. Status and hints speak quietly around them. */
+.line { color: var(--ink); }
+.line.gap { min-height: 0.9em; }
+.line.visitor {
+  font-style: italic;
+  color: var(--ink-soft);
+  padding-left: 1.4rem;
+  position: relative;
+}
+.line.visitor::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.8em;
+  width: 0.8rem;
+  height: 1px;
+  background: var(--line);
+}
+.line.status {
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  opacity: 0.8;
+}
+.line.hint {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--ink-soft);
+}
 .line.system { color: var(--accent); font-style: italic; }
+/* The way in, when it is granted: the door's one link, in the letterhead's
+   capitals. */
+a.enter {
+  font-family: 'Cinzel', serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ink);
+  border-bottom: 1px solid var(--accent);
+  padding-bottom: 0.2rem;
+}
+a.enter:hover { color: var(--accent); }
 
 .copyable { cursor: pointer; text-decoration: underline dotted var(--accent); }
 .copyable.copied { color: var(--accent); }
 
-#input-line { white-space: pre-wrap; word-break: break-word; }
+/* You write on a hairline rule. white-space is normal on the line itself:
+   pre-wrap there rendered the markup's own newlines and indentation, which
+   set the prompt a line low and indented. The typed text keeps pre-wrap. */
+#input-line {
+  white-space: normal;
+  word-break: break-word;
+  font-style: italic;
+  color: var(--ink-soft);
+  padding: 0 0 0.35rem 1.4rem;
+  border-bottom: 1px solid var(--line);
+  max-width: 30rem;
+  margin-top: 0.4rem;
+}
+#input-text { white-space: pre-wrap; }
 /* Not a blinking DOS block — a nib: a thin stroke held at a pen's angle,
    with a slow breath. It follows the keeper's writing and waits at the
    visitor's line. */
@@ -359,52 +352,34 @@ a { color: var(--accent); }
    lamp is lit. Even then it stays warm — dusk, not a basement. The media
    query below is the no-JS fallback for the same palette. */
 html.bv-night {
-  /* The room is dark; the paper is still paper. A warm umber sheet, lit
-     by the lamp below, with the grain tinted by lamplight rather than
-     flecked white. */
+  /* The room is dark; the paper is still paper: a warm umber sheet, lit
+     by the lamp below. */
   --paper: #2b251d;
   --ink: #ece6da;
   --ink-body: #cfc7b8;
   --ink-soft: #a89f8f;
   --accent: #b9a26e;
-  --line: #3a342a;
+  --line: #51483a; /* hairlines must still read by lamplight */
   --emboss-hi: rgba(255, 226, 180, calc(0.26 * var(--relief)));
   --emboss-lo: rgba(0, 0, 0, calc(0.5 * var(--relief)));
   --press-hi: rgba(255, 236, 200, 0.1);
   color-scheme: dark;
-  --paper-fibre-hi: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='512'%20height='512'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.11'%20numOctaves='5'%20seed='7'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%201%200%200%200%200%200.88%200%200%200%200%200.68%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200.04%200.15'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-fibre-lo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='512'%20height='512'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.11'%20numOctaves='5'%20seed='7'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200.05%200.19'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-tooth-hi: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='240'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.95'%20numOctaves='2'%20seed='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%201%200%200%200%200%200.9%200%200%200%200%200.72%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200%200%200.11'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-tooth-lo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='240'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.95'%20numOctaves='2'%20seed='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200%200%200%200%200.14'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-cloud: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1024'%20height='1024'%3E%3Cfilter%20id='n'%20x='0'%20y='0'%20width='100%'%20height='100%'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.006'%20numOctaves='3'%20seed='11'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='table'%20tableValues='0%200.03%200.07'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%'%20height='100%'%20filter='url(%23n)'/%3E%3C/svg%3E");
 }
 html.bv-night body::after {
   background:
-    var(--paper-tooth-lo) 0 0 / 240px 240px,
-    var(--paper-tooth-hi) 0 0 / 240px 240px,
-    /* The lamp: a generous warm pool low on the page, the sheet visibly
-       cream where the light falls, falling off into the dark of the room
-       toward the far corner. */
+    var(--dither) 0 0 / 128px 128px,
+    /* The lamp: a soft warm pool low on the page, falling off into the
+       dark of the room. Gentle — on a flat sheet a strong pool reads as a
+       gradient, not as light. */
     radial-gradient(120% 100% at var(--light-x) var(--light-y),
-      rgba(255, 200, 128, 0.34) 0%,
-      rgba(255, 190, 115, 0.16) 38%,
-      rgba(255, 180, 100, 0) 72%),
-    radial-gradient(90% 80% at 8% 4%,
-      rgba(0, 0, 0, 0.32) 0%,
-      rgba(0, 0, 0, 0) 62%),
-    linear-gradient(rgba(255, 176, 96, 0.05), rgba(255, 176, 96, 0.05));
+      rgba(255, 200, 128, 0.22) 0%,
+      rgba(255, 190, 115, 0.08) 40%,
+      rgba(255, 180, 100, 0) 72%);
 }
 @media (max-width: 700px) {
-  /* A phone's pixels are the same size as a monitor's, but the sheet is a
-     quarter the width: scale the grain down so the fibre reads as fibre
-     rather than as a coarse texture. */
-  html {
-    background-size: 320px 320px, 320px 320px, 640px 640px, 150px 150px;
-  }
-  body::after,
-  html.bv-night body::after {
-    background-size: 150px 150px, 150px 150px, auto, auto, auto;
-  }
+  .crest svg { height: 108px; }
+  .page .crest svg { height: 72px; }
+  .quote { font-size: 1.6rem; }
 }
 
 @media (prefers-color-scheme: dark) {

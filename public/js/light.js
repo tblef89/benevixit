@@ -8,6 +8,8 @@
  * the embossed art, the letterpress impression on the capitals — reads
  * these custom properties, so the whole page agrees about one light.
  *
+ * The crest's die-stamp is lit by the same light (its feDistantLight azimuth).
+ *
  * Loaded synchronously in <head> (it's tiny) so the first paint is already
  * lit correctly; re-evaluated each minute so a long visit sees the light
  * move. Preview any hour with <html data-bv-hour="7.5">.
@@ -35,10 +37,13 @@
     var warm = Math.pow(1 - el, 1.6);
 
     var s = root.style;
+    var sdx, sdy;
     if (night) {
       // A lamp on the desk, low and to the right; long soft shadows.
-      s.setProperty('--sun-dx', '-1px');
-      s.setProperty('--sun-dy', '-1.6px');
+      sdx = -1;
+      sdy = -1.6;
+      s.setProperty('--sun-dx', sdx + 'px');
+      s.setProperty('--sun-dy', sdy + 'px');
       s.setProperty('--light-x', '72%');
       s.setProperty('--light-y', '88%');
       s.setProperty('--light-strength', '0.55');
@@ -48,8 +53,10 @@
       // Shadows fall away from the sun and always downward; longer and
       // stronger when the sun is low.
       var len = 1 + (1 - el) * 1.1;
-      s.setProperty('--sun-dx', fmt(-az * len) + 'px');
-      s.setProperty('--sun-dy', fmt(0.45 + (1 - el) * 0.9) + 'px');
+      sdx = -az * len;
+      sdy = 0.45 + (1 - el) * 0.9;
+      s.setProperty('--sun-dx', fmt(sdx) + 'px');
+      s.setProperty('--sun-dy', fmt(sdy) + 'px');
       s.setProperty('--light-x', fmt(50 + az * 48) + '%');
       s.setProperty('--light-y', fmt(8 + (1 - el) * 34) + '%');
       s.setProperty('--light-strength', fmt(0.45 + el * 0.35));
@@ -58,6 +65,14 @@
     }
     root.classList.toggle('bv-night', night);
 
+    // The crest's die-stamp is lit from where the light comes from: the
+    // opposite of where the shadows fall. SVG azimuth is measured clockwise
+    // from +x with y pointing down, like the page.
+    var azDeg = Math.atan2(-sdy, -sdx) * 180 / Math.PI;
+    if (azDeg < 0) azDeg += 360;
+    var lights = document.querySelectorAll('feDistantLight[data-bv-sun]');
+    for (var j = 0; j < lights.length; j++) lights[j].setAttribute('azimuth', fmt(azDeg));
+
     var metas = document.querySelectorAll('meta[name="theme-color"]');
     for (var i = 0; i < metas.length; i++) {
       metas[i].setAttribute('content', night ? '#201d17' : '#f3ede2');
@@ -65,6 +80,8 @@
   }
 
   compute();
+  // The crest is parsed after this script runs: light it once it exists.
+  document.addEventListener('DOMContentLoaded', compute);
   setInterval(compute, 60000);
   try {
     matchMedia('(prefers-color-scheme: dark)').addEventListener('change', compute);

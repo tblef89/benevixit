@@ -64,6 +64,23 @@
   // Returns the rendered art box as viewport fractions plus the resting
   // opacity — everything the particles need to impersonate the element.
   function measureWatermark(aspect) {
+    // A page may rest its art in an element of its own rather than the
+    // full-viewport watermark (the gate's crest): measure that box directly.
+    var art = document.querySelector('[data-bv-art]');
+    if (art) {
+      try {
+        var ar = art.getBoundingClientRect();
+        if (ar.width && ar.height) {
+          var ink = parseFloat(cssVar('--wm-ink', '0.035'));
+          return {
+            hFrac: ar.height / innerHeight,
+            cxFrac: (ar.left + ar.width / 2) / innerWidth,
+            cyFrac: (ar.top + ar.height / 2) / innerHeight,
+            opacity: isFinite(ink) && ink > 0 ? ink : 0.035,
+          };
+        }
+      } catch (e) {}
+    }
     var el = document.querySelector('.bv-watermark');
     if (!el || !aspect) return null;
     try {
