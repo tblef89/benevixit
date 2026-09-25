@@ -66,21 +66,14 @@
     div.className = 'line';
     const a = document.createElement('a');
     a.href = url;
-    a.textContent = '[ Enter the shop ]';
+    a.className = 'enter';
+    a.textContent = 'Enter the shop';
     div.appendChild(a);
     document.getElementById('output').appendChild(div);
     T.scrollBottom();
   }
 
-  // ── Opening: the printer's mark at the chapter head, then the motto ──
-  // The ornament sits above the epigraph, in the clear band above the
-  // watermark — lower placements collide with the background key's bow.
-  const fleuron = document.createElement('div');
-  fleuron.className = 'bv-fleuron';
-  fleuron.setAttribute('aria-hidden', 'true');
-  fleuron.appendChild(document.createElement('span'));
-  document.getElementById('output').appendChild(fleuron);
-
+  // ── Opening: the motto under the crest, as a letterhead ──
   const quote = document.createElement('blockquote');
   quote.className = 'quote';
   const qline = document.createElement('em');
@@ -93,9 +86,8 @@
   document.getElementById('output').appendChild(quote);
   T.scrollBottom();
   await T.pause(500);
-  await T.print('He lives well who conceals himself well.', 25);
-  T.addLine('');
-  await T.print('Verifying personhood.', 15);
+  await T.print('He lives well who conceals himself well.', 25, 'translation');
+  await T.print('Verifying personhood.', 15, 'status');
 
   const cfg = await api('config');
   if (!cfg.ok || !cfg.data?.turnstileSiteKey) {
@@ -118,7 +110,7 @@
   T.addLine('');
   await T.print(opening, 35);
   T.addLine('');
-  T.printInstant("(If you already know the word: /word <phrase>)");
+  T.printInstant('Know the word? Write /word, then the word.', 'hint');
   T.addLine('');
 
   // Silence looks like death in a terminal, but dots look like a machine.
@@ -151,7 +143,7 @@
 
   // ── Conversation loop ──
   while (true) {
-    const input = await T.prompt('> ');
+    const input = await T.prompt('');
     if (!input) continue;
 
     let result;

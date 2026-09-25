@@ -23,9 +23,9 @@ const Terminal = (() => {
   }
 
   // Add a completed line to output
-  function addLine(text) {
+  function addLine(text, cls) {
     const div = document.createElement('div');
-    div.className = 'line';
+    div.className = 'line' + (cls ? ' ' + cls : text === '' ? ' gap' : '');
     div.textContent = text;
     output.appendChild(div);
     scrollBottom();
@@ -65,11 +65,11 @@ const Terminal = (() => {
   }
 
   // Print text with the hand's rhythm; a nib follows the writing.
-  function print(text, speed) {
+  function print(text, speed, cls) {
     const base = (speed || DEFAULT_SPEED) * PACE;
     return new Promise(resolve => {
       const div = document.createElement('div');
-      div.className = 'line';
+      div.className = 'line' + (cls ? ' ' + cls : '');
       const body = document.createElement('span');
       const nib = document.createElement('span');
       nib.className = 'cursor writing';
@@ -111,8 +111,8 @@ const Terminal = (() => {
   }
 
   // Print instantly (no animation)
-  function printInstant(text) {
-    addLine(text);
+  function printInstant(text, cls) {
+    addLine(text, cls);
   }
 
   // Pause
@@ -128,7 +128,7 @@ const Terminal = (() => {
   // Show prompt and wait for user input
   let tapHintShown = false;
   function prompt(prefix) {
-    prefix = prefix || '> ';
+    prefix = prefix || '';
     return new Promise(resolve => {
       inputPrefix.textContent = prefix;
       inputText.textContent = '';
@@ -158,8 +158,8 @@ const Terminal = (() => {
           hiddenInput.removeEventListener('keydown', onKey);
           hiddenInput.removeEventListener('input', onInput);
           inputLine.style.display = 'none';
-          // Echo the input
-          addLine(prefix + val);
+          // The visitor's line joins the correspondence in their own hand.
+          addLine(prefix + val, 'visitor');
           resolve(val.trim());
         }
       }
