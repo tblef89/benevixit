@@ -519,6 +519,7 @@ add_filter('gettext', function ($translated, $text, $domain) {
             'Ship to a different address?' => 'Where should we send it',
             'Billing details' => 'Your details',
             'Place order' => 'Send ZEC',
+            'Proceed to Checkout' => 'Proceed to checkout',
         ];
         return $replacements[$text] ?? $translated;
     }
@@ -531,3 +532,18 @@ add_filter('gettext', function ($translated, $text, $domain) {
     }
     return $translated;
 }, 10, 3);
+
+// The cart block draws its button in the browser, from WooCommerce's
+// JavaScript strings, which the gettext filter above never sees. Its label
+// is translated when the script loads, so the override is set on wp-i18n,
+// which every block script loads first.
+add_action('wp_enqueue_scripts', function () {
+    $strings = [
+        'Proceed to Checkout' => ['Proceed to checkout'],
+    ];
+    wp_add_inline_script(
+        'wp-i18n',
+        'wp.i18n.setLocaleData(' . wp_json_encode($strings) . ', "woocommerce");',
+        'after'
+    );
+});
