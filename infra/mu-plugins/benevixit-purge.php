@@ -14,12 +14,14 @@
  * id, the delivery choice (hold or address), the FedEx tracking number, and
  * the dates. Accounting needs the order; it does not need the person.
  *
- * When: seven days after Completed; seven days after the last change for
- * Cancelled, Failed and Refunded; seven days after creation for an order
- * that was never paid (Pending). Processing and On hold orders are never
- * touched. WooCommerce logs are kept seven days too.
+ * When: within seven days of Completed; of the last change for Cancelled,
+ * Failed and Refunded; of creation for an order that was never paid
+ * (Pending). The job runs hourly and takes each order a couple of hours
+ * before its seven days are up, so a late or missed run still lands inside
+ * the week. Processing and On hold orders are never touched. WooCommerce
+ * logs are kept seven days too.
  *
- * How: a daily Action Scheduler job (visible under WooCommerce → Status →
+ * How: an hourly Action Scheduler job (visible under WooCommerce → Status →
  * Scheduled actions, group "bene-vixit"). Each order goes through
  * WooCommerce's own privacy eraser — the same code as Tools → Erase
  * personal data, which also lets other plugins erase their share — with
@@ -40,6 +42,7 @@ defined('ABSPATH') || exit;
 use Automattic\WooCommerce\Utilities\OrderUtil;
 
 const BV_PURGE_DAYS = 7;
+const BV_PURGE_INTERVAL = HOUR_IN_SECONDS;
 const BV_PURGE_HOOK = 'bv_purge_run';
 const BV_PURGE_ONE_HOOK = 'bv_purge_order_now';
 const BV_PURGE_GROUP = 'bene-vixit';
@@ -59,6 +62,13 @@ function bv_purge_rules() {
     ];
 }
 
+// How long after its clock starts an order is purged: two runs short of
+// seven days, so even with one run late or missed, every order is gone
+// before its week is out.
+function bv_purge_window() {
+    return BV_PURGE_DAYS * DAY_IN_SECONDS - 2 * BV_PURGE_INTERVAL;
+}
+
 // ── Scheduling ──────────────────────────────────────────────────────────
 
 // Checked on admin and scheduler requests only; the storefront never pays for it.
@@ -70,7 +80,7 @@ add_action('init', function () {
         return;
     }
     if (!as_has_scheduled_action(BV_PURGE_HOOK, [], BV_PURGE_GROUP)) {
-        as_schedule_recurring_action(time() + 10 * MINUTE_IN_SECONDS, DAY_IN_SECONDS, BV_PURGE_HOOK, [], BV_PURGE_GROUP);
+        as_schedule_recurring_action(time() + 10 * MINUTE_IN_SECONDS, BV_PURGE_INTERVAL, BV_PURGE_HOOK, [], BV_PURGE_GROUP);
     }
     set_transient('bv_purge_scheduled', 1, 12 * HOUR_IN_SECONDS);
 }, 20);
@@ -125,7 +135,7 @@ function bv_purge_order_ids(array $query) {
 
 // Orders whose clock has run out and that are not yet purged, oldest first.
 function bv_purge_due_ids($now = null) {
-    $cutoff = ($now ?: time()) - BV_PURGE_DAYS * DAY_IN_SECONDS;
+    $cutoff = ($now ?: time()) - bv_purge_window();
     $ids = [];
     foreach (bv_purge_rules() as $status => $date_key) {
         $ids = array_merge($ids, bv_purge_order_ids(['status' => [$status], $date_key => '<' . $cutoff]));
@@ -138,7 +148,7 @@ function bv_purge_due_ids($now = null) {
 // Orders that will come due, with the date each will be purged.
 function bv_purge_upcoming($now = null) {
     $now = $now ?: time();
-    $cutoff = $now - BV_PURGE_DAYS * DAY_IN_SECONDS;
+    $cutoff = $now - bv_purge_window();
     $done = bv_purge_done_ids();
     $out = [];
     foreach (bv_purge_rules() as $status => $date_key) {
@@ -150,7 +160,7 @@ function bv_purge_upcoming($now = null) {
             $getter = 'get_' . $date_key;
             $start = $order->{$getter}();
             if ($start) {
-                $out[$order->get_id()] = [$status, $start->getTimestamp() + BV_PURGE_DAYS * DAY_IN_SECONDS];
+                $out[$order->get_id()] = [$status, $start->getTimestamp() + bv_purge_window()];
             }
         }
     }
@@ -331,7 +341,7 @@ function bv_purge_order($order, $dry_run = false) {
     }
 
     // 3. Copies in the storage WooCommerce is not currently using.
-    bv_purge_other_storage($order);
+    bv_purge_other_storage($order, $needles, $report['meta']);
 
     $order->update_meta_data(BV_PURGE_DONE_KEY, gmdate('c'));
     $order->add_order_note(
@@ -344,9 +354,11 @@ function bv_purge_order($order, $dry_run = false) {
 
 // WooCommerce keeps orders either in posts/postmeta or in its own order
 // tables, and may hold a second copy in the other (compatibility sync, or
-// data left from before a switch). Overwrite any such copy with what the
-// eraser left on the order, so no second copy survives.
-function bv_purge_other_storage(WC_Order $order) {
+// data left from before a switch). Overwrite that copy's core fields with
+// what the eraser left on the order, then delete from its meta anything
+// the purge removed from the order itself, or that still mentions the
+// person — so no second copy survives, whichever store is authoritative.
+function bv_purge_other_storage(WC_Order $order, array $needles, array $gone_keys) {
     global $wpdb;
     $id = $order->get_id();
     $fields = ['first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'postcode', 'country', 'phone'];
@@ -400,6 +412,30 @@ function bv_purge_other_storage(WC_Order $order) {
             $id
         ));
     }
+
+    // The inactive store's meta: plugin data (the HAL choice, labels, FedEx
+    // responses) that WooCommerce's CRUD never touches there.
+    if (bv_purge_hpos()) {
+        $meta_table = $wpdb->postmeta;
+        $id_col = 'meta_id';
+        $order_col = 'post_id';
+    } else {
+        $meta_table = $wpdb->prefix . 'wc_orders_meta';
+        $id_col = 'id';
+        $order_col = 'order_id';
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $meta_table)) !== $meta_table) {
+            return;
+        }
+    }
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT {$id_col} AS row_id, meta_key, meta_value FROM {$meta_table} WHERE {$order_col} = %d",
+        $id
+    ));
+    foreach ($rows as $row) {
+        if (in_array($row->meta_key, $gone_keys, true) || bv_purge_meta_goes($row->meta_key, maybe_unserialize($row->meta_value), $needles)) {
+            $wpdb->query($wpdb->prepare("DELETE FROM {$meta_table} WHERE {$id_col} = %d", $row->row_id));
+        }
+    }
 }
 
 // ── The run ─────────────────────────────────────────────────────────────
@@ -422,20 +458,23 @@ function bv_purge_run($dry_run = false) {
     }
     if (!$dry_run) {
         update_option(BV_PURGE_LAST_RUN, ['at' => time(), 'purged' => count($reports), 'failed' => count($failed)], false);
-        error_log('bv-purge: run complete — ' . count($reports) . ' purged'
-            . ($reports ? ' (' . implode(', ', array_column($reports, 'id')) . ')' : '')
-            . ($failed ? ', ' . count($failed) . ' failed (' . implode(', ', $failed) . ')' : ''));
+        if ($reports || $failed) { // hourly: quiet unless something happened
+            error_log('bv-purge: run complete — ' . count($reports) . ' purged'
+                . ($reports ? ' (' . implode(', ', array_column($reports, 'id')) . ')' : '')
+                . ($failed ? ', ' . count($failed) . ' failed (' . implode(', ', $failed) . ')' : ''));
+        }
     }
     return ['reports' => $reports, 'failed' => $failed];
 }
 
 // The retention promise may be shown only while this machinery is keeping
-// it: a run finished within the last two days, and it failed nothing.
+// it: the last run finished within the margin bv_purge_window() leaves
+// (two runs' worth), and it failed nothing.
 function bv_purge_is_live() {
     $last = get_option(BV_PURGE_LAST_RUN);
     return is_array($last)
         && isset($last['at'], $last['failed'])
-        && (time() - (int) $last['at']) < 2 * DAY_IN_SECONDS
+        && (time() - (int) $last['at']) < 2 * BV_PURGE_INTERVAL
         && (int) $last['failed'] === 0;
 }
 

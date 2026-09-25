@@ -56,7 +56,7 @@ const BV_LOCALE_KEYS = ['address_1', 'address_2', 'city', 'state', 'postcode', '
 
 // The retention promise shown under the choice. A promise on the page must
 // be kept by machinery, not memory: it appears only while the purge job
-// (benevixit-purge.php, issue #45) has run in the last two days without a
+// (benevixit-purge.php, issue #45) has run in the last two hours without a
 // failure, and disappears by itself if that stops being true.
 const BV_RETENTION_PROMISE = 'We delete all shipping information from our records within one week of delivery.';
 

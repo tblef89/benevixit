@@ -115,33 +115,37 @@ When step 4 holds end-to-end, the store is launchable.
 the customer or where the parcel went, seven days after the order is done
 with. Accounting keeps the order; it does not keep the person.
 
-| Order status | Purged when |
+| Order status | Purged within 7 days of |
 | --- | --- |
-| Completed | 7 days after it was marked Completed |
-| Cancelled, Failed, Refunded | 7 days after the last change |
-| Pending (never paid) | 7 days after it was placed |
+| Completed | being marked Completed |
+| Cancelled, Failed, Refunded | its last change |
+| Pending (never paid) | being placed |
 | Processing, On hold | never — still being fulfilled |
+
+The job runs hourly and takes each order two hours before its seven days
+are up, so even a late or missed run still lands inside the week.
 
 **Goes:** every name, address, phone and email (shipping and the hidden
 billing mirror), IP address and browser, the chosen FedEx Hold-at-Location,
 FedEx label and shipment data that carries the recipient, order-attribution
 data, all order notes, and the customer's analytics row. Copies in the
-order-storage tables WooCommerce isn't using are overwritten too, so a
-direct database query finds nothing either way.
+order-storage tables WooCommerce isn't using (left by a switch between
+storage modes, or kept by compatibility sync) are cleaned too, so a direct
+database query finds nothing either way.
 **Stays:** items, totals, the ZEC transaction id, payment status, the
 delivery choice (hold or address), the FedEx tracking number, the dates.
 
-It runs daily as an Action Scheduler job (WooCommerce → Status → Scheduled
-actions, group `bene-vixit`). Each order goes through WooCommerce's own
-privacy eraser plus our additions, is marked `_bv_purged`, and gets one
-note. Only order ids reach the log (`docker compose logs wordpress | grep
-bv-purge`). WooCommerce logs are kept 7 days. Keep the FedEx plugin's
+It is an Action Scheduler job (WooCommerce → Status → Scheduled actions,
+group `bene-vixit`). Each order goes through WooCommerce's own privacy
+eraser plus our additions, is marked `_bv_purged`, and gets one note. Only
+order ids reach the log, and only when a run purged or failed something
+(`docker compose logs wordpress | grep bv-purge`). WooCommerce logs are kept 7 days. Keep the FedEx plugin's
 **debug mode off** in production: it prints full requests on screen and
 into logs.
 
 **The checkout promise** ("We delete all shipping information from our
 records within one week of delivery.") shows only while the job is
-demonstrably working: a run finished in the last two days with no
+demonstrably working: the last run finished under two hours ago with no
 failures. If the job stops, the promise disappears by itself.
 
 **Make sure it runs.** WordPress's scheduler only wakes on traffic. Add
