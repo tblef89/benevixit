@@ -6,9 +6,10 @@
  * The arriving page hides its own watermark from first paint (bv-transit),
  * instantly redraws the PREVIOUS art from the session point-cache, scatters
  * it, and forms the new art — whose sampling starts in parallel with the
- * scatter. Same-art routes simply scatter and reform. Content fades in while
- * the art is still forming; the rebuild may outlast the page load,
- * deliberately.
+ * scatter. Same-art routes (the crest, gate to shop and between shop
+ * pages) glide instead: the mark moves from its old place to its new one.
+ * Content fades in while the art is still forming; the rebuild may outlast
+ * the page load, deliberately.
  *
  * Sampled outlines are cached in sessionStorage, so dense traced SVGs pay
  * their geometry cost once per session, not per navigation. Scenes are
@@ -158,7 +159,9 @@
     els.forEach(function (el) {
       el.style.transition = 'opacity ' + ms + 'ms ease';
       void el.offsetWidth; // eslint-disable-line no-unused-expressions
-      el.style.opacity = String(to);
+      // Fading in returns each element to its own opacity (the ghost footer
+      // rests at a quarter), not to a flat 1 it would then snap back from.
+      el.style.opacity = to === 1 ? '' : String(to);
     });
     setTimeout(function () {
       if (to === 1) {
@@ -402,26 +405,34 @@
     else drawGrains(ctx, particles, 'form', null, relief);
   }
 
-  // 'scatter': home → far. 'form': far → home. The pressed art hands its
-  // mass to the grains as they depart and receives it back as they land;
-  // nothing ever brightens beyond the relief the page itself wears.
-  function animateParticles(canvas, particles, direction, scene, relief, image, done) {
+  // 'scatter': home → far. 'form': far → home. 'glide': the same mark
+  // moving from where the last page pressed it to where this one does (fx/fy
+  // hold the old home), handing off from the old image to the new. The
+  // pressed art hands its mass to the grains as they depart and receives it
+  // back as they land; nothing ever brightens beyond the relief the page
+  // itself wears.
+  function animateParticles(canvas, particles, direction, scene, relief, image, done, fromImage) {
     var ctx = canvas.getContext('2d');
     var W = canvas.width, H = canvas.height;
-    var ms = direction === 'form' ? (scene.formMs || 1400) : (scene.scatterMs || 900);
+    var ms = direction === 'scatter' ? (scene.scatterMs || 900) : (scene.formMs || 1400);
     var start = performance.now();
     function frame(now) {
       var t = Math.min(1, (now - start) / ms);
       ctx.clearRect(0, 0, W, H);
-      var imgAlpha = direction === 'form'
-        ? Math.max(0, (t - 0.65) / 0.35)
-        : Math.max(0, 1 - t / 0.35);
+      var imgAlpha = direction === 'scatter'
+        ? Math.max(0, 1 - t / 0.35)
+        : Math.max(0, (t - 0.65) / 0.35);
+      var fromAlpha = direction === 'glide' && fromImage ? Math.max(0, 1 - t / 0.35) : 0;
+      if (fromAlpha > 0) {
+        ctx.globalAlpha = easeInOutCubic(fromAlpha);
+        ctx.drawImage(fromImage.cnv, fromImage.x, fromImage.y, fromImage.w, fromImage.h);
+      }
       if (image && imgAlpha > 0) {
         ctx.globalAlpha = easeInOutCubic(imgAlpha);
         ctx.drawImage(image.cnv, image.x, image.y, image.w, image.h);
       }
-      ctx.globalAlpha = image ? easeInOutCubic(1 - imgAlpha) : 1;
-      drawGrains(ctx, particles, direction, t, relief);
+      ctx.globalAlpha = image ? easeInOutCubic(1 - Math.max(imgAlpha, fromAlpha)) : 1;
+      drawGrains(ctx, particles, direction === 'glide' ? 'form' : direction, t, relief);
       ctx.globalAlpha = 1;
       if (t < 1) requestAnimationFrame(frame);
       else done();
@@ -523,17 +534,29 @@
         // the previous art scatters.
         var targetReady = sampleArt(scene.art, count);
 
-        var finish = function (art) {
+        var finish = function (art, from) {
           // Measure how THIS page renders its watermark; the forming art
           // must land exactly on the element that takes over afterwards.
           var destGeom = measureWatermark(art.aspect) || defaultGeom();
           var targetParticles = buildParticles(art, canvas, destGeom);
+          // The same mark on both pages (the letterhead's crest): each grain
+          // travels from its place in the old mark to its place in the new
+          // one. Sampling is deterministic, so grain i is the same point of
+          // the outline at both ends.
+          var glide = !!(from && from.particles.length === targetParticles.length);
+          if (glide) {
+            targetParticles.forEach(function (p, i) {
+              p.fx = from.particles[i].hx;
+              p.fy = from.particles[i].hy;
+              p.delay = Math.random() * 0.15;
+            });
+          }
           var box = artBox(canvas, destGeom, art.aspect);
           var relief = reliefParams();
           loadArtImage(scene.art).catch(function () { return null; }).then(function (img) {
             var image = img ? reliefImage(img, box, destGeom.opacity, relief) : null;
           fadeContent(1, scene.formMs || 1400, null);
-          animateParticles(canvas, targetParticles, 'form', scene, relief, image, function () {
+          animateParticles(canvas, targetParticles, glide ? 'glide' : 'form', scene, relief, image, function () {
             setTimeout(function () {
               endTransit();
               // The real watermark (already showing this scene's art) takes
@@ -542,12 +565,14 @@
               canvas.style.opacity = '0';
               setTimeout(function () { canvas.remove(); }, 420);
             }, scene.holdMs || 100);
-          });
+          }, glide ? from.image : null);
           });
         };
 
         fromDrawn.then(function (state) {
-          if (state) {
+          if (state && flag.from === scene.art && (flag.count || 1400) === count) {
+            targetReady.then(function (art) { finish(art, state); }).catch(bail);
+          } else if (state) {
             animateParticles(canvas, state.particles, 'scatter', scene, state.relief, state.image, function () {
               targetReady.then(finish).catch(bail);
             });

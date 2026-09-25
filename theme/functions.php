@@ -28,8 +28,8 @@ add_action('wp_enqueue_scripts', function () {
     }
 });
 
-// The hat itself, engraved, standing in the arch's opening — the one object
-// in a drawn world. Rendered as an ink-masked raster (see .bv-hat).
+// The hat itself, engraved: the one printed object on the sheet, under the
+// letterhead's blind crest. Rendered as an ink-masked raster (see .bv-hat).
 add_action('woocommerce_single_product_summary', function () {
     echo '<div class="bv-hat" role="img" aria-label="The hat, engraved"></div>';
 }, 22);
@@ -51,13 +51,12 @@ add_action('init', function () {
     remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_meta', 40);
 });
 
-// The long description, plainly, where the tabs used to be — a printer's
-// ornament between it and the summary, the way a book breathes between
-// chapters.
+// The long description, plainly, where the tabs used to be, a hairline
+// between it and the summary.
 add_action('woocommerce_after_single_product_summary', function () {
     $content = get_post_field('post_content', get_the_ID());
     if ($content) {
-        echo '<div class="bv-fleuron" aria-hidden="true"><span></span></div>';
+        echo '<div class="bv-rule" aria-hidden="true"></div>';
         echo '<div class="bv-description">' . apply_filters('the_content', $content) . '</div>';
     }
 }, 10);
