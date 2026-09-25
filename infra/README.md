@@ -73,10 +73,20 @@ email is dropped silently. `infra/mu-plugins/benevixit-mail.php` routes
    to the site's admin email and prints the transport, the from address,
    and the server's answer. A failure also lands in
    `docker compose logs wordpress` as `bv-mail:`.
-5. WooCommerce → Settings → Emails: sender name/address to match
-   `BV_MAIL_FROM`; **New order** (to you) and **Processing order** (to the
-   customer) enabled. Re-send on an existing order with Order actions →
-   "Send order details to customer" to test without placing another.
+5. WooCommerce → Settings → Emails: **New order** (to you), and **Order
+   on-hold**, **Processing order** and **Completed order** (to the customer)
+   enabled. Re-send on an existing order with Order actions → "Send order
+   details to customer" to test without placing another.
+
+The letters themselves are the theme's (`theme/woocommerce/emails/`, with
+subjects and headings in `theme/emails.php`): the site's paper and ink,
+the house name for a letterhead, one address block, and nothing fetched
+from our server when they're opened (no logo, no web font). The colour,
+footer, subject, heading and "additional content" settings on that
+screen are not used. The sender comes from `BV_MAIL_FROM`, whatever the
+screen says. The New order email to you carries what was bought and how
+it ships, but no name, address, email or phone: those stay in the order,
+where the purge can reach them.
 
 ## 4. The product
 
@@ -167,12 +177,14 @@ minutes regardless:
   minute). Useful for testing, or when someone asks.
 - Where WP-CLI is available: `wp bv purge --dry-run`, then `wp bv purge`.
 
-**Outside the database, not covered by the purge:** the New order
-emails in the keeper@ mailbox, CipherPay's copy of the invoice (the plugin
-sends the billing name and shipping address with each invoice), and
-FedEx's own records. The first is a mailbox habit. The second has no
-setting in their plugin, but it can be stripped from the request in our
-own code if we decide to.
+**Outside the database, not covered by the purge:** the customer's own
+copies of their order emails (theirs to keep), CipherPay's copy of the
+invoice (the plugin sends the billing name and shipping address with each
+invoice), and FedEx's own records. The New order emails in the keeper@
+mailbox carry no customer details (see Mail above); order emails sent
+before that change do, and are a mailbox habit to clear. CipherPay's has
+no setting in their plugin, but it can be stripped from the request in
+our own code if we decide to.
 
 ## Pricing note
 
