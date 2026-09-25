@@ -54,10 +54,11 @@ const BV_ADDRESS_ONLY_KEYS = ['shipping_address_1', 'shipping_city', 'shipping_s
 // Address fields whose labels WooCommerce's locale script owns.
 const BV_LOCALE_KEYS = ['address_1', 'address_2', 'city', 'state', 'postcode', 'country', 'phone'];
 
-// The retention promise shown under the choice. Empty until the automated
-// purge (issue #45) is live — a promise on the page must be kept by
-// machinery, not memory.
-const BV_RETENTION_PROMISE = '';
+// The retention promise shown under the choice. A promise on the page must
+// be kept by machinery, not memory: it appears only while the purge job
+// (benevixit-purge.php, issue #45) has run in the last two hours without a
+// failure, and disappears by itself if that stops being true.
+const BV_RETENTION_PROMISE = 'We delete all shipping information from our records within one week of delivery.';
 
 function bv_is_checkout() {
     return function_exists('is_checkout') && is_checkout();
@@ -255,9 +256,9 @@ add_action('woocommerce_after_checkout_billing_form', function () {
     <?php
 });
 
-// The retention promise, once it is kept by the purge job (issue #45).
+// The retention promise, while the purge job is keeping it.
 add_action('woocommerce_after_checkout_shipping_form', function () {
-    if (BV_RETENTION_PROMISE !== '') {
+    if (BV_RETENTION_PROMISE !== '' && function_exists('bv_purge_is_live') && bv_purge_is_live()) {
         echo '<p id="bv-promise">' . esc_html(BV_RETENTION_PROMISE) . '</p>';
     }
 });
