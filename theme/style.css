@@ -51,8 +51,7 @@ body {
   font-feature-settings: 'onum' 1, 'liga' 1;
 }
 
-/* Background on html ONLY: a body background paints OVER negative-z children,
-   which would hide the watermark behind solid paper.
+/* Background on html only, so body::after's light sits on the paper.
    The sheet is flat, as on the gate: paper at arm's length is smooth; what
    makes it read as paper is the light across it (body::after), not a grain. */
 html {
@@ -108,119 +107,63 @@ body::after {
       rgba(214, 160, 88, calc(var(--light-warm) * 0.1)));
 }
 
-/* The art, always present behind everything — not printed but pressed: a
-   blind emboss on the linen, lit by the hour. The element's own mask holds
-   only a whisper of ink (--wm-ink); the relief lives in its pseudo-elements:
-   a highlight sliver on the edge facing the light and a shadow sliver on the
-   far edge, each cut by subtracting the shape from itself shifted by the
-   sun's offset. The custom properties are read by dissolve.js so transition
-   particles land exactly on this element, relief and all. */
+/* ── The letterhead ──
+   The gate's key at the head of every sheet, a blind emboss (no ink, only
+   relief), with the house name set small beneath it. Nothing is printed
+   over it: the forms and the order sit below the crest, never on it. The
+   markup lives in header.php; the lighting is the gate's (light.js turns
+   the feDistantLight with the hour, and the night filter is the same die
+   under a lamp). data-bv-art lets the page transition (dissolve.js) start
+   and end on the crest. */
 :root {
-  --wm-height: 72;
-  --wm-ink: 0.035;
-  --wm-art: url('/art/key.svg');
-  --wm-size: auto calc(var(--wm-height) * 1%);
-  --wm-px: 50%;
-  --wm-py: 50%;
+  --wm-ink: 0.035; /* the ink whisper the transition's particle copy uses */
 }
-.bv-watermark {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-color: color-mix(in srgb, var(--ink) calc(var(--wm-ink) * 100%), transparent);
-  -webkit-mask: var(--wm-art) no-repeat var(--wm-px) var(--wm-py) / var(--wm-size);
-  mask: var(--wm-art) no-repeat var(--wm-px) var(--wm-py) / var(--wm-size);
-}
-@supports (mask-composite: subtract) or (-webkit-mask-composite: source-out) {
-  .bv-watermark::before,
-  .bv-watermark::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    -webkit-mask-image: var(--wm-art), var(--wm-art);
-    mask-image: var(--wm-art), var(--wm-art);
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    -webkit-mask-size: var(--wm-size), var(--wm-size);
-    mask-size: var(--wm-size), var(--wm-size);
-    -webkit-mask-composite: source-out;
-    mask-composite: subtract;
-  }
-  .bv-watermark::before {
-    background-color: var(--emboss-hi);
-    -webkit-mask-position: var(--wm-px) var(--wm-py),
-      calc(var(--wm-px) + var(--sun-dx)) calc(var(--wm-py) + var(--sun-dy));
-    mask-position: var(--wm-px) var(--wm-py),
-      calc(var(--wm-px) + var(--sun-dx)) calc(var(--wm-py) + var(--sun-dy));
-  }
-  .bv-watermark::after {
-    background-color: var(--emboss-lo);
-    -webkit-mask-position: var(--wm-px) var(--wm-py),
-      calc(var(--wm-px) - var(--sun-dx)) calc(var(--wm-py) - var(--sun-dy));
-    mask-position: var(--wm-px) var(--wm-py),
-      calc(var(--wm-px) - var(--sun-dx)) calc(var(--wm-py) - var(--sun-dy));
-  }
-}
-/* During a transition the particle copy performs; the real element waits. */
-.bv-transit .bv-watermark { visibility: hidden; }
-
-
-/* Content sits explicitly above the watermark — no reliance on negative
-   z-index paint order, which WP/Woo stylesheets can disturb. */
 .bv-header, .bv-main, #site-footer { position: relative; z-index: 1; }
-
-/* The printer's ornament: the key at 16px between major moments, flanked by
-   hairlines — one mark, used with discipline (matches the gate). */
-.bv-fleuron {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin: 2.25rem auto 0;
+.bv-header {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 2.75rem 1.25rem 0.5rem;
+  text-align: center;
 }
-.bv-fleuron::before,
-.bv-fleuron::after {
-  content: '';
+.bv-letterhead {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+  text-decoration: none;
+}
+.crest { display: block; }
+.crest svg {
+  display: block;
+  height: 84px;
+  width: auto;
+  overflow: visible;
+}
+html.bv-night .crest image { filter: url(#bv-emboss-night); }
+/* During a transition the particle copy performs; the real crest waits. */
+.bv-transit [data-bv-art] { visibility: hidden; }
+.bv-brand {
+  font-family: 'Cinzel', serif;
+  font-weight: 400;
+  font-size: 0.66rem;
+  /* Inscriptional capitals want air between them — carved, not typed. */
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  transition: color 0.3s;
+}
+.bv-letterhead:hover .bv-brand { color: var(--accent); }
+@media (max-width: 700px) {
+  .bv-header { padding-top: 2rem; }
+  .crest svg { height: 72px; }
+}
+
+/* A hairline between major moments (the gate's rule under the translation). */
+.bv-rule {
   width: 3rem;
   height: 1px;
+  margin: 2.25rem auto 0;
   background: var(--line);
-}
-.bv-fleuron span {
-  width: 18px;
-  height: 18px;
-  background-color: var(--ink);
-  opacity: 0.55;
-  /* key_mark.svg is the key with strokes weighted for 18px — the watermark's
-     hairline strokes vanish at fleuron size. */
-  -webkit-mask: url('/art/key_mark.svg') no-repeat center / contain;
-  mask: url('/art/key_mark.svg') no-repeat center / contain;
-}
-
-/* Per-page art in pure CSS via the body class — works with JS disabled;
-   scenes.json still drives the transition particles. The visit moves through
-   stone: key at the gate, arch at the threshold, wall once inside. */
-.single-product .bv-watermark {
-  --wm-art: url('/art/arch.svg');
-  --wm-size: min(58%, 42rem) auto;
-  --wm-px: 50%;
-  --wm-py: 30%;
-  --wm-ink: 0.09;
-}
-.woocommerce-cart .bv-watermark,
-.woocommerce-checkout .bv-watermark {
-  --wm-art: url('/art/wall.svg');
-  --wm-size: min(94%, 66rem) auto;
-  --wm-px: 50%;
-  --wm-py: 50%;
-  --wm-ink: 0.045;
-}
-@media (max-width: 700px) {
-  /* Narrow screens: the arch spans the page or it disappears behind the text. */
-  .single-product .bv-watermark {
-    --wm-size: 96% auto;
-    --wm-py: 26%;
-  }
 }
 
 /* The hat itself: the engraving as a raster alpha-mask painted in ink, so it
@@ -235,32 +178,21 @@ body::after {
   mask: url('/art/hat.png') no-repeat center / contain;
 }
 
-/* ── Header: the brand line, nothing else ── */
-.bv-header {
-  max-width: 52rem;
-  margin: 0 auto;
-  padding: 2.5rem 1.25rem 1rem;
-}
-.bv-brand {
-  font-family: 'Cinzel', serif;
-  font-weight: 600;
-  font-size: 1.05rem;
-  /* Inscriptional capitals want air between them — carved, not typed. */
-  letter-spacing: 0.14em;
-  color: var(--ink);
-  text-decoration: none;
-}
-.bv-brand:hover { color: var(--accent); }
-.bv-motto {
-  font-size: 0.75rem;
-  color: var(--ink-soft);
-  margin-top: 0.15rem;
-}
-
 .bv-main {
   max-width: 52rem;
   margin: 0 auto;
   padding: 1.5rem 1.25rem 7rem;
+}
+
+/* Page titles (Cart, Checkout) set as on the gate's Terms and Privacy:
+   inscriptional capitals, small, pressed (see Letterpress below). */
+.bv-main article > h1 {
+  font-family: 'Cinzel', serif;
+  font-weight: 400;
+  font-size: 1.2rem;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+  margin: 1.5rem 0 1.5rem;
 }
 
 /* ── Kill Woo's default chrome ── */
@@ -358,7 +290,7 @@ body::after {
   max-width: 34rem;
   margin: 0 auto;
   text-align: center;
-  padding-top: 8vh;
+  padding-top: 2.5rem;
 }
 .single-product div.product div.images,
 .single-product .woocommerce-product-gallery { display: none !important; }
@@ -828,9 +760,8 @@ body.bv-mode-addr .bv-lbl-addr { display: inline; }
 
 /* Letterpress: the capitals are pressed into the paper; the far wall of the
    impression catches the light. */
-.bv-brand,
 .woocommerce div.product .product_title,
-.page h1 {
+.bv-main article > h1 {
   text-shadow: calc(var(--sun-dx) * 0.7) calc(var(--sun-dy) * 0.7) 0 var(--press-hi);
 }
 

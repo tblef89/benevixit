@@ -11,17 +11,8 @@
       "art": "/art/key.svg"
     },
     {
-      "match": "^/product/",
-      "art": "/art/arch.svg",
-      "particles": 1600
-    },
-    {
-      "match": "^/cart",
-      "art": "/art/wall.svg"
-    },
-    {
-      "match": "^/checkout",
-      "art": "/art/wall.svg"
+      "match": "^/(product|cart|checkout|terms|privacy)(/|\\.html|$)",
+      "art": "/art/key.svg"
     }
   ]
 }
