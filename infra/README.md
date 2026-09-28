@@ -55,25 +55,38 @@ message to PHP's `mail()`, which has nowhere to send it, and every order
 email is dropped silently. `infra/mu-plugins/benevixit-mail.php` routes
 `wp_mail()` over authenticated SMTP instead, configured from `.env`.
 
-1. Pick a sender. Anything with SMTP + username/password works: the host
-   of the `keeper@benevixit.com` mailbox (Fastmail, Migadu…) is the
-   simplest — one vendor, replies land in the same box; a transactional
-   service (Postmark, SES, Resend) if volume or deliverability ever matters.
-2. In `.env`: `BV_SMTP_HOST`, `BV_SMTP_PORT` (587 STARTTLS / 465 TLS),
-   `BV_SMTP_USER`, `BV_SMTP_PASS` (an app password, not the mailbox
-   password), `BV_MAIL_FROM`, `BV_MAIL_FROM_NAME`. Then
-   `docker compose up -d` — env is fixed when the container is created,
-   so a `.env` edit alone changes nothing.
-3. DNS at Cloudflare, per the provider's instructions: **SPF** (a TXT on
-   `benevixit.com` naming the provider), **DKIM** (the provider's CNAME or
-   TXT records), and **DMARC** (`_dmarc` TXT, `v=DMARC1; p=quarantine;`
-   is a sane start). Without these the mail sends but lands in spam.
+Two halves, two vendors: the shop **sends** through Cloudflare Email
+Service over SMTP, and **shopkeeper@benevixit.com** is a real mailbox at
+Proton Mail, where customer replies and the New order notices land.
+
+1. Sending: in `.env`, `BV_SMTP_HOST=smtp.mx.cloudflare.net`,
+   `BV_SMTP_PORT=465`, `BV_SMTP_USER=api_token` (literally),
+   `BV_SMTP_PASS` (a Cloudflare API token with Email Sending: Edit),
+   `BV_MAIL_FROM=shopkeeper@benevixit.com`, `BV_MAIL_FROM_NAME`. Then
+   `docker compose up -d`: env is fixed when the container is created,
+   so a `.env` edit alone changes nothing. Any other SMTP provider works
+   the same way.
+2. Receiving: benevixit.com is a custom domain in Proton (Settings →
+   Domain names), with the shopkeeper@ address. Customers reply to the
+   From address, so it must be a mailbox someone reads.
+3. DNS at Cloudflare. The **MX** records and the one **SPF** record
+   (`v=spf1 include:_spf.protonmail.ch ~all`) are Proton's, and so are
+   the three `protonmail*._domainkey` **DKIM** CNAMEs, which must be
+   **DNS only** (grey cloud). Cloudflare's sending doesn't rely on that
+   SPF record: it signs with its own DKIM key and bounces to its own
+   address. **DMARC** is a `_dmarc` TXT; start at `v=DMARC1; p=none;`
+   and move to `p=quarantine` once an order email shows DMARC PASS
+   (Gmail: Show original). A domain has one SPF record and one set of
+   MX records, so a new mail vendor means editing these, never adding
+   a second.
 4. Test: signed in as an administrator, open
    `https://benevixit.com/wp-admin/?bv_mail_test=1`. It sends one message
    to the site's admin email and prints the transport, the from address,
    and the server's answer. A failure also lands in
    `docker compose logs wordpress` as `bv-mail:`.
-5. WooCommerce → Settings → Emails: **New order** (to you), and **Order
+5. WooCommerce → Settings → Emails: **New order**, **Cancelled order**
+   and **Failed order** with recipient `shopkeeper@benevixit.com` (and
+   Settings → General → Administration email address the same), and **Order
    on-hold**, **Processing order** and **Completed order** (to the customer)
    enabled. Re-send on an existing order with Order actions → "Send order
    details to customer" to test without placing another.
@@ -180,7 +193,7 @@ minutes regardless:
 **Outside the database, not covered by the purge:** the customer's own
 copies of their order emails (theirs to keep), CipherPay's copy of the
 invoice (the plugin sends the billing name and shipping address with each
-invoice), and FedEx's own records. The New order emails in the keeper@
+invoice), and FedEx's own records. The New order emails in the shopkeeper@
 mailbox carry no customer details (see Mail above); order emails sent
 before that change do, and are a mailbox habit to clear. CipherPay's has
 no setting in their plugin, but it can be stripped from the request in
