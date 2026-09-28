@@ -18,6 +18,10 @@ shop.benevixit.com {
 	@worker expression `{header.X-BV-Proxy} == "{$BV_PROXY_TOKEN}" && size("{$BV_PROXY_TOKEN}") >= 32`
 
 	handle @worker {
+		# XML-RPC: unused here, and one request can carry hundreds of
+		# password guesses. WordPress disables it too
+		# (benevixit-hardening.php); this keeps it from reaching PHP at all.
+		respond /xmlrpc.php 404
 		encode gzip
 		reverse_proxy wordpress:80
 	}

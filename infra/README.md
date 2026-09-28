@@ -273,6 +273,46 @@ remove them: `docker rm`, `docker volume rm`, `rm` the archives.
 
 **Files (FIL-1).** `chmod 600 infra/.env && chown root: infra/.env`.
 
+**The git remote (FIL-4).** A token in the remote URL sits in plain text
+in `.git/config`. The repo is private, so pull with a read-only deploy
+key instead, then revoke the token on GitHub:
+
+```bash
+sudo ssh-keygen -t ed25519 -N '' -C benevixit-vps-deploy -f /root/.ssh/benevixit_deploy
+sudo cat /root/.ssh/benevixit_deploy.pub   # the public half: safe to copy
+```
+
+GitHub → the repo → Settings → Deploy keys → Add deploy key: paste it,
+leave **Allow write access** off. Then:
+
+```bash
+printf 'Host github.com\n  IdentityFile /root/.ssh/benevixit_deploy\n  IdentitiesOnly yes\n' | sudo tee -a /root/.ssh/config
+sudo git -C /opt/benevixit remote set-url origin git@github.com:tblef89/benevixit.git
+sudo git -C /opt/benevixit fetch origin main
+```
+
+The first fetch asks to trust github.com. Its ED25519 fingerprint is
+`SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU`; answer yes only if
+it matches. Then delete the old token under GitHub → Settings → Developer
+settings → Personal access tokens.
+
+**Name resolution (NET-1, port 5355).** systemd-resolved answers LLMNR
+on every interface. The firewall already blocks it; turn it off anyway:
+
+```bash
+sudo mkdir -p /etc/systemd/resolved.conf.d
+printf '[Resolve]\nLLMNR=no\n' | sudo tee /etc/systemd/resolved.conf.d/no-llmnr.conf
+sudo systemctl restart systemd-resolved
+```
+
+**WordPress's open doors (PUB-1, PUB-2, PUB-3).**
+`mu-plugins/benevixit-hardening.php` switches off XML-RPC, answers the
+REST user routes only for an administrator, and drops the user sitemap
+and oEmbed author names. Caddy also answers `/xmlrpc.php` with a 404.
+The plugin is live on `git pull`. Caddy reads its file only at start, so
+its part also needs `docker compose restart caddy` (a `git pull` replaces
+the file, and a running container keeps the old one).
+
 **Logs (DOC-5).** `docker compose up -d` applies the size caps in
 `docker-compose.yml`.
 
