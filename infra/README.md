@@ -31,9 +31,8 @@ verification is live as soon as WordPress boots, and updates ship via
 2. Wait for `https://shop.benevixit.com` to answer with a Caddy-issued cert.
 3. Leave the record **grey cloud** — the Worker fetches this hostname
    directly as its origin; Caddy's Let's Encrypt cert secures the hop.
-4. Optional hardening: firewall the VPS so ports 80/443 only accept
-   [Cloudflare IP ranges](https://www.cloudflare.com/ips/), plus your SSH.
-   (Worker `fetch()` egress comes from Cloudflare IPs, so this still works.)
+4. The origin answers only the Worker: see "Hardening" below for the
+   token that makes that so.
 
 ## 3. WordPress + WooCommerce
 
@@ -198,6 +197,82 @@ mailbox carry no customer details (see Mail above); order emails sent
 before that change do, and are a mailbox habit to clear. CipherPay's has
 no setting in their plugin, but it can be stripped from the request in
 our own code if we decide to.
+
+## 8. Hardening
+
+`infra/audit.sh` checks the box and prints one line per finding, each with
+an id. It is read-only and never prints a secret, so its output is safe to
+share:
+
+```bash
+cd /opt/benevixit && git pull origin main && sudo bash infra/audit.sh
+```
+
+Fixes, by id. Keep a second SSH session open while changing anything under
+SSH, and know where your provider's web console is: a mistake there locks
+you out, and the console is the way back in.
+
+**The origin lock (FIL-2, ORG-1).** The Worker stamps every request it
+proxies with a token derived from `BV_GRANT_SECRET`; Caddy drops anything
+without it. Put the token in `.env` (this prints nothing), then recreate
+the stack:
+
+```bash
+cd /opt/benevixit/infra
+docker compose exec -T wordpress php -r '$t=substr(rtrim(strtr(base64_encode(hash_hmac("sha256","bv-proxy-v1",getenv("BV_GRANT_SECRET"),true)),"+/","-_"),"="),0,32); echo strlen($t)===32 ? "\nBV_PROXY_TOKEN=$t\n" : "";' >> .env
+grep -c '^BV_PROXY_TOKEN=' .env      # 1 (2 means it ran twice: delete one line)
+docker compose up -d
+```
+
+Anything that calls the origin must go through benevixit.com. The
+CipherPay webhook URL must be `https://benevixit.com/wp-json/cipherpay/v1/webhook`,
+never `shop.benevixit.com`. If the token is missing or wrong, the whole
+shop answers nothing (fails closed); run the three lines above again.
+Changing `GRANT_SECRET` in the Worker means regenerating this too.
+
+**System (SYS-2, SYS-3).** `apt update && apt upgrade`, then turn on
+automatic security updates: `apt install unattended-upgrades` and
+`dpkg-reconfigure -plow unattended-upgrades`. Reboot when SYS-1 asks.
+
+**SSH (SSH-1 to SSH-5).** Log in as your own user with sudo, not root.
+Then create `/etc/ssh/sshd_config.d/10-bv.conf`:
+
+```
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+MaxAuthTries 3
+X11Forwarding no
+AllowUsers YOUR_USER
+```
+
+`sshd -t && systemctl reload ssh`, then open a **new** session to prove it
+works before closing the old one. `apt install fail2ban` (SSH-6) quiets
+the rest.
+
+**Firewall (NET-2).** `ufw default deny incoming`, `ufw allow OpenSSH`,
+`ufw allow 80,443/tcp`, `ufw enable`. Docker's published ports bypass
+ufw; that's fine here, because 80/443 must stay open for certificate
+renewal and the origin lock guards them. Nothing else should be listening
+(NET-1).
+
+**Leftovers (DOC-1, DOC-2, FIL-5).** Containers, volumes and dumps from
+the box's previous life (the shisaku mothball) hold someone's old data.
+Once the offsite copy from `docs/mothball-runbook.md` is confirmed good,
+remove them: `docker rm`, `docker volume rm`, `rm` the archives.
+
+**Files (FIL-1).** `chmod 600 infra/.env && chown root: infra/.env`.
+
+**Logs (DOC-5).** `docker compose up -d` applies the size caps in
+`docker-compose.yml`.
+
+**Beyond the box.** Most breaches start at an account, not a server:
+- Turn on two-factor authentication for the VPS provider, Cloudflare,
+  GitHub, Proton, CipherPay and FedEx.
+- Scope Cloudflare API tokens to the one permission each needs.
+- **Check the provider's automatic backups and snapshots.** They keep
+  everything the purge deletes, for as long as they're retained. Either
+  turn them off or keep their retention at a week or less.
 
 ## Pricing note
 

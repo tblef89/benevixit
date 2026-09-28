@@ -1,17 +1,39 @@
-# shop.benevixit.com origin, behind the Cloudflare proxy.
+# shop.benevixit.com: the WordPress origin, reached only by the benevixit.com
+# Worker, which fetches this hostname directly (the DNS record is grey
+# cloud) with Caddy's own Let's Encrypt certificate securing the hop.
 #
-# TLS: during first-time cert issuance, either grey-cloud the shop DNS record
-# (turn the Cloudflare proxy off) until Caddy obtains its Let's Encrypt cert,
-# then re-enable the proxy with SSL mode "Full (strict)" — or install a
-# Cloudflare Origin Certificate instead (tls /path/cert.pem /path/key.pem).
+# The lock: the Worker stamps every request it proxies with X-BV-Proxy, a
+# 32-character token derived from GRANT_SECRET (src/lib/sign.js; the same
+# value benevixit-canonical-host.php computes). Any request without it is
+# dropped without a reply, so nobody who finds this hostname (it is in the
+# public certificate logs) can reach wp-login.php, the REST API, uploads or
+# anything else here except through the Worker. If BV_PROXY_TOKEN is unset
+# or short, nothing matches and the origin refuses everything: it fails
+# closed. The token goes in infra/.env (see infra/README.md, "Hardening").
+#
+# Certificate issuance and renewal are unaffected: Caddy answers ACME
+# challenges itself, before any of this runs.
 
 shop.benevixit.com {
-	reverse_proxy wordpress:80
-	encode gzip
+	@worker expression `{header.X-BV-Proxy} == "{$BV_PROXY_TOKEN}" && size("{$BV_PROXY_TOKEN}") >= 32`
+
+	handle @worker {
+		encode gzip
+		reverse_proxy wordpress:80
+	}
+	handle {
+		abort
+	}
 
 	header {
 		X-Frame-Options SAMEORIGIN
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
+		# The Worker passes these through to visitors; they name the
+		# software and its version, which only helps someone shopping for
+		# an exploit.
+		-Server
+		-X-Powered-By
+		-X-Pingback
 	}
 }
