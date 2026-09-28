@@ -512,6 +512,35 @@ add_action('wp_head', function () {
     echo '<style>.woocommerce-checkout .form-row.bv-mirror{display:none !important}</style>' . "\n";
 });
 
+// Nothing about the buyer goes to CipherPay. Its WooCommerce plugin (v1.0.2,
+// class-wc-gateway-cipherpay.php) sends the billing name and the full
+// shipping address with every invoice, as shipping_alias, shipping_address
+// and shipping_region. Its server has no such fields and discards them
+// (cipherpay-api, CreateInvoiceRequest), but they would still cross the wire
+// and sit in any log or proxy along the way. This removes them from the
+// request body before WordPress sends it; the invoice needs only the amount,
+// the currency and the product name.
+const BV_CIPHERPAY_STRIP = ['shipping_alias', 'shipping_address', 'shipping_region'];
+
+add_filter('http_request_args', function ($args, $url) {
+    if (strtoupper($args['method'] ?? '') !== 'POST') {
+        return $args;
+    }
+    $path = (string) parse_url((string) $url, PHP_URL_PATH);
+    if (!preg_match('#/api/invoices/?$#', $path) || !is_string($args['body'] ?? null)) {
+        return $args;
+    }
+    $body = json_decode($args['body'], true);
+    if (!is_array($body)) {
+        return $args;
+    }
+    $kept = array_diff_key($body, array_flip(BV_CIPHERPAY_STRIP));
+    if ($kept !== $body) {
+        $args['body'] = wp_json_encode($kept);
+    }
+    return $args;
+}, 10, 2);
+
 // Copy in voice.
 add_filter('gettext', function ($translated, $text, $domain) {
     if ($domain === 'woocommerce') {

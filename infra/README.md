@@ -190,13 +190,14 @@ minutes regardless:
 - Where WP-CLI is available: `wp bv purge --dry-run`, then `wp bv purge`.
 
 **Outside the database, not covered by the purge:** the customer's own
-copies of their order emails (theirs to keep), CipherPay's copy of the
-invoice (the plugin sends the billing name and shipping address with each
-invoice), and FedEx's own records. The New order emails in the shopkeeper@
-mailbox carry no customer details (see Mail above); order emails sent
-before that change do, and are a mailbox habit to clear. CipherPay's has
-no setting in their plugin, but it can be stripped from the request in
-our own code if we decide to.
+copies of their order emails (theirs to keep), and FedEx's own records.
+The New order emails in the shopkeeper@ mailbox carry no customer details
+(see Mail above); order emails sent before that change do, and are a
+mailbox habit to clear. **CipherPay gets nothing about the buyer:** its
+plugin sends the name and shipping address with each invoice, and
+`benevixit-checkout.php` strips them from the request before it leaves
+(the invoice carries only amount, currency and product name). Status
+updates are matched by invoice id alone, so nothing depends on them.
 
 ## 8. Hardening
 
