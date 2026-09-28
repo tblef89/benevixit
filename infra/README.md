@@ -309,12 +309,33 @@ sudo systemctl restart systemd-resolved
 `mu-plugins/benevixit-hardening.php` switches off XML-RPC, answers the
 REST user routes only for an administrator, and drops the user sitemap
 and oEmbed author names. Caddy also answers `/xmlrpc.php` with a 404.
+It also turns off the plugin and theme code editors and application
+passwords, and shuts WooCommerce's own login, registration and
+password-reset forms (the shop has no customer accounts, so they could
+only ever log in the administrator). `wp-login.php` is the one way in.
 The plugin is live on `git pull`. Caddy reads its file only at start, so
 its part also needs `docker compose restart caddy` (a `git pull` replaces
 the file, and a running container keeps the old one).
 
 **Logs (DOC-5).** `docker compose up -d` applies the size caps in
 `docker-compose.yml`.
+
+**The admin login behind Cloudflare Access (PUB-7, PUB-8).** Nobody sees
+`wp-login.php` or `/wp-admin` without first entering a one-time code sent
+to an address you choose; WordPress's own password and two-factor come
+after that. Cloudflare → Zero Trust (free plan) → Access → Applications:
+
+1. **Add an application → Self-hosted**, name "wp admin". Public
+   hostnames: `benevixit.com` with path `wp-admin`, and `benevixit.com`
+   with path `wp-login.php`. Policy: **Allow**, include **Emails** →
+   `shopkeeper@benevixit.com`. Login method: one-time PIN.
+2. **Add another → Self-hosted**, name "wp ajax (open)": `benevixit.com`
+   with path `wp-admin/admin-ajax.php`. Policy: **Bypass**, include
+   **Everyone**. The shop's scripts and WordPress's background jobs call
+   it; the more specific path wins over the first application.
+
+`infra/audit.sh` checks both (PUB-7: the login redirects to
+`cloudflareaccess.com`; PUB-8: admin-ajax.php still answers).
 
 **Beyond the box.** Most breaches start at an account, not a server:
 - Turn on two-factor authentication for the VPS provider, Cloudflare,

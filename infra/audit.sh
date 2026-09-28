@@ -288,6 +288,22 @@ for p in /wp-content/debug.log /wp-config.php.bak /wp-config.php~ /.env /.git/co
   if [ "$(pub "$p")" = 200 ]; then fail PUB-4 "$p is downloadable"; leaked=1; fi
 done
 [ "$leaked" = 0 ] && pass PUB-4 "no debug log, config backup, .env or .git is downloadable"
+acct=$(curl -s --max-time 8 https://benevixit.com/my-account/ 2>/dev/null | grep -c 'woocommerce-login-nonce')
+if [ "$acct" -gt 0 ]; then fail PUB-6 "My account shows WooCommerce's login form (a second door to the admin login)"
+else pass PUB-6 "no WooCommerce login form on My account"; fi
+# Cloudflare Access sends an unauthenticated visitor to <team>.cloudflareaccess.com.
+for p in /wp-login.php /wp-admin/; do
+  to=$(curl -s -o /dev/null -w '%{redirect_url}' --max-time 8 "https://benevixit.com$p" 2>/dev/null)
+  case "$to" in
+    *cloudflareaccess.com*) pass PUB-7 "$p is behind Cloudflare Access" ;;
+    *) warn PUB-7 "$p is reachable by anyone (Cloudflare Access isn't guarding it)" ;;
+  esac
+done
+ajax=$(pub /wp-admin/admin-ajax.php)
+case "$ajax" in
+  400|200) pass PUB-8 "admin-ajax.php still answers the shop's own scripts (HTTP $ajax)" ;;
+  *) warn PUB-8 "admin-ajax.php answers HTTP $ajax (the shop's scripts need it; exempt it from Access)" ;;
+esac
 hdr=$(curl -sI --max-time 8 https://benevixit.com/cart/ 2>/dev/null)
 if printf '%s' "$hdr" | grep -qi '^x-powered-by:'; then warn PUB-5 "responses announce the PHP version (X-Powered-By)"
 else pass PUB-5 "responses don't announce software versions"; fi
