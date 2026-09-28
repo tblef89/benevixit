@@ -1,6 +1,15 @@
 # Bene Vixit shop stack — WordPress + WooCommerce + CipherPay behind Caddy.
 # Deliberately minimal: no Node API, no deploy webhook. The gate lives on
 # Cloudflare Workers; this box only sells the hat.
+
+# Container logs are capped: request lines carry order keys and one-time
+# grant tokens, and Docker otherwise keeps every line forever.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "5m"
+    max-file: "2"
+
 services:
   caddy:
     image: caddy:2-alpine
@@ -8,6 +17,11 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      # The origin lock (see Caddyfile): only requests carrying this token,
+      # which the Worker adds, are served.
+      - BV_PROXY_TOKEN=${BV_PROXY_TOKEN:-}
+    logging: *logging
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
@@ -20,6 +34,7 @@ services:
   wordpress:
     image: wordpress:6-php8.2-apache
     restart: unless-stopped
+    logging: *logging
     env_file: .env
     environment:
       - WORDPRESS_DB_HOST=db
@@ -45,6 +60,7 @@ services:
   db:
     image: mariadb:11
     restart: unless-stopped
+    logging: *logging
     env_file: .env
     environment:
       - MARIADB_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
