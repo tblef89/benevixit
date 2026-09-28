@@ -147,12 +147,24 @@ if have ss; then
   if [ -n "$open" ]; then warn NET-1 "reachable TCP ports besides 22/80/443: $open"
   else pass NET-1 "only SSH, 80 and 443 are reachable over TCP"; fi
 fi
+# Only a deny/drop default for INBOUND host traffic counts: ufw's
+# incoming default, or the INPUT chain's own policy (iptables or nft).
+# A drop policy on FORWARD alone, or a ufw that allows by default, leaves
+# every host port open.
+ufw_in=""
 if have ufw && ufw status 2>/dev/null | grep -q 'Status: active'; then
-  pass NET-2 "ufw is active (default incoming: $(ufw status verbose 2>/dev/null | awk -F'[:,(]' '/Default:/{gsub(/ /,"",$2); print $2}'))"
-elif have nft && [ "$(nft list ruleset 2>/dev/null | grep -c 'policy drop')" -gt 0 ]; then
-  pass NET-2 "an nftables policy drops unrequested traffic"
+  ufw_in=$(ufw status verbose 2>/dev/null | sed -n 's/^Default: \([a-z]*\) (incoming).*/\1/p')
+fi
+ipt_in=$(iptables -S INPUT 2>/dev/null | awk '$1=="-P"{print $3; exit}')
+nft_in=$(nft list ruleset 2>/dev/null | grep -E 'hook input' | grep -c 'policy drop')
+if [ "$ufw_in" = deny ] || [ "$ufw_in" = reject ]; then
+  pass NET-2 "ufw is active and refuses incoming traffic by default"
+elif [ -n "$ufw_in" ]; then
+  fail NET-2 "ufw is active but its incoming default is '$ufw_in' (should be deny)"
+elif [ "$ipt_in" = DROP ] || [ "${nft_in:-0}" -gt 0 ]; then
+  pass NET-2 "the INPUT chain drops unrequested traffic by default"
 else
-  fail NET-2 "no host firewall is active"
+  fail NET-2 "nothing refuses incoming traffic by default (no ufw, INPUT policy ${ipt_in:-unknown})"
 fi
 if have iptables; then
   du_rules=$(iptables -S DOCKER-USER 2>/dev/null | grep -vc '^-N\|RETURN$')
@@ -200,8 +212,10 @@ if [ -d "$REPO" ]; then
     mode=$(stat -c '%a' "$env"); owner=$(stat -c '%U' "$env")
     if [ "$mode" = 600 ] || [ "$mode" = 400 ]; then pass FIL-1 ".env is readable by its owner only ($mode, $owner)"
     else fail FIL-1 ".env is mode $mode (owner $owner); it holds every secret the shop has"; fi
-    if grep -qE '^BV_PROXY_TOKEN=.{32,}$' "$env"; then pass FIL-2 ".env has BV_PROXY_TOKEN"
-    else fail FIL-2 ".env has no BV_PROXY_TOKEN (the origin lock needs it)"; fi
+    defs=$(grep -c '^BV_PROXY_TOKEN=' "$env")
+    if [ "$defs" -gt 1 ]; then fail FIL-2 ".env defines BV_PROXY_TOKEN $defs times (keep only the filled-in line)"
+    elif grep -qE '^BV_PROXY_TOKEN=.{32,}$' "$env"; then pass FIL-2 ".env has BV_PROXY_TOKEN"
+    else fail FIL-2 ".env has no BV_PROXY_TOKEN value (the origin lock needs it)"; fi
   else
     fail FIL-1 "$env not found"
   fi
@@ -236,7 +250,8 @@ code() { curl -sk -o /dev/null -w '%{http_code}' --max-time 8 "$@" 2>/dev/null; 
 at_origin() { code --resolve shop.benevixit.com:443:127.0.0.1 "$@" https://shop.benevixit.com/wp-login.php; }
 # The token is read to make one request with it; it is never printed.
 token=""
-[ -f "$REPO/infra/.env" ] && token=$(grep -m1 '^BV_PROXY_TOKEN=' "$REPO/infra/.env" | cut -d= -f2-)
+# The last definition, as Docker Compose reads it.
+[ -f "$REPO/infra/.env" ] && token=$(grep '^BV_PROXY_TOKEN=' "$REPO/infra/.env" | tail -n1 | cut -d= -f2-)
 without=$(at_origin)
 if [ -n "$token" ]; then
   with=$(at_origin -H "X-BV-Proxy: $token")

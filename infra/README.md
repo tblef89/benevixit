@@ -215,20 +215,29 @@ you out, and the console is the way back in.
 
 **The origin lock (FIL-2, ORG-1).** The Worker stamps every request it
 proxies with a token derived from `BV_GRANT_SECRET`; Caddy drops anything
-without it. Put the token in `.env` (this prints nothing), then recreate
+without it. Write the token into `.env` (this prints nothing, and fills
+in the existing `BV_PROXY_TOKEN=` line if there is one), then recreate
 the stack:
 
 ```bash
 cd /opt/benevixit/infra
-docker compose exec -T wordpress php -r '$t=substr(rtrim(strtr(base64_encode(hash_hmac("sha256","bv-proxy-v1",getenv("BV_GRANT_SECRET"),true)),"+/","-_"),"="),0,32); echo strlen($t)===32 ? "\nBV_PROXY_TOKEN=$t\n" : "";' >> .env
-grep -c '^BV_PROXY_TOKEN=' .env      # 1 (2 means it ran twice: delete one line)
+T=$(docker compose exec -T wordpress php -r 'echo substr(rtrim(strtr(base64_encode(hash_hmac("sha256","bv-proxy-v1",getenv("BV_GRANT_SECRET"),true)),"+/","-_"),"="),0,32);')
+if [ ${#T} -eq 32 ]; then
+  if grep -q '^BV_PROXY_TOKEN=' .env; then sed -i "s|^BV_PROXY_TOKEN=.*|BV_PROXY_TOKEN=$T|" .env
+  else printf '\nBV_PROXY_TOKEN=%s\n' "$T" >> .env; fi
+  echo "token written"
+else
+  echo "no token: is the stack up, and is BV_GRANT_SECRET set?"
+fi
+unset T
+grep -c '^BV_PROXY_TOKEN=.\{32\}$' .env      # 1
 docker compose up -d
 ```
 
 Anything that calls the origin must go through benevixit.com. The
 CipherPay webhook URL must be `https://benevixit.com/wp-json/cipherpay/v1/webhook`,
 never `shop.benevixit.com`. If the token is missing or wrong, the whole
-shop answers nothing (fails closed); run the three lines above again.
+shop answers nothing (fails closed); run the block above again.
 Changing `GRANT_SECRET` in the Worker means regenerating this too.
 
 **System (SYS-2, SYS-3).** `apt update && apt upgrade`, then turn on
