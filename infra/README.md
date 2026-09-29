@@ -131,6 +131,25 @@ Update the KV manifest (`GATE_KV` → `manifest`):
 
 When step 4 holds end-to-end, the store is launchable.
 
+## 6b. When the shopkeeper is away
+
+**WooCommerce → Shopkeeper** (`mu-plugins/benevixit-shopkeeper.php`) has
+two switches, each with its own words:
+
+- **Away notice.** A card over the shop, cart and checkout pages that every
+  visitor clicks through once per visit. The first line of the message is
+  its heading; each further line is a paragraph. Changing the message shows
+  it again to people who had already read the old one.
+- **Collection in person.** A third choice at checkout beside the two FedEx
+  ones. It asks for an email address and nothing else. There is no name,
+  address or phone, and no shipping charge; anything a browser autofilled is
+  dropped before the order is saved. The pickup note shows on that choice
+  and in the buyer's emails; the buyer gives the order number at the table.
+  Mark the order **Completed** when it is handed over (the buyer gets a
+  "Collected" email, and the purge takes it from there).
+
+Turn both off when you are back.
+
 ## 7. The purge (shipping information deleted after a week)
 
 `infra/mu-plugins/benevixit-purge.php` deletes everything that identifies

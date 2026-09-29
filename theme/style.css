@@ -415,6 +415,7 @@ html.bv-night .crest image { filter: url(#bv-emboss-night); }
     "email     zip"
     "h-mode    h-mode"
     "card-hal  card-addr"
+    "card-pick card-pick"
     "name1     name1"
     "name2     name2"
     "street    street"
@@ -433,6 +434,7 @@ body.bv-mode-hal #customer_details {
     "email     zip"
     "h-mode    h-mode"
     "card-hal  card-addr"
+    "card-pick card-pick"
     "name1     ."
     "name2     ."
     "loc       ."
@@ -445,6 +447,7 @@ body.bv-mode-addr #customer_details {
     "email     zip"
     "h-mode    h-mode"
     "card-hal  card-addr"
+    "card-pick card-pick"
     ".         name1"
     ".         name2"
     ".         street"
@@ -454,6 +457,15 @@ body.bv-mode-addr #customer_details {
     ".         country"
     ".         phone"
     "promise   promise";
+}
+/* Collection in person: the email above is all it asks for. */
+body.bv-mode-pickup #customer_details {
+  grid-template-areas:
+    "h-details h-details"
+    "email     ."
+    "h-mode    h-mode"
+    "card-hal  card-addr"
+    "card-pick card-pick";
 }
 .woocommerce-checkout .col-1,
 .woocommerce-checkout .col-2,
@@ -558,7 +570,13 @@ body.bv-mode-hal #shipping_state_field,
 body.bv-mode-hal #shipping_country_field,
 body.bv-mode-addr #customer_details .bv-loc,
 body.bv-mode-addr #customer_details [id*="hold_at_location"],
-body.bv-mode-addr #customer_details [id*="hold-at-location"] { display: none !important; }
+body.bv-mode-addr #customer_details [id*="hold-at-location"],
+body.bv-mode-pickup .woocommerce-shipping-fields .form-row,
+body.bv-mode-pickup #shipping_postcode_field,
+body.bv-mode-pickup #customer_details .bv-loc,
+body.bv-mode-pickup #customer_details [id*="hold_at_location"],
+body.bv-mode-pickup #customer_details [id*="hold-at-location"],
+body.bv-mode-pickup #bv-promise { display: none !important; }
 /* The choice: two cards, hairline-ruled, in our voice. */
 .bv-card {
   display: block;
@@ -591,8 +609,13 @@ body.bv-mode-addr #customer_details [id*="hold-at-location"] { display: none !im
 .bv-card .bv-card-text { display: block; margin: 0.45rem 0 0; font-size: 0.95rem; color: var(--ink-soft); line-height: 1.5; }
 #bv-card-hal { grid-area: card-hal; }
 #bv-card-addr { grid-area: card-addr; }
+#bv-card-pick { grid-area: card-pick; }
 body.bv-mode-hal #bv-card-addr,
-body.bv-mode-addr #bv-card-hal { opacity: 0.55; }
+body.bv-mode-hal #bv-card-pick,
+body.bv-mode-addr #bv-card-hal,
+body.bv-mode-addr #bv-card-pick,
+body.bv-mode-pickup #bv-card-hal,
+body.bv-mode-pickup #bv-card-addr { opacity: 0.55; }
 /* Labels that change with the choice. */
 .bv-lbl-hal, .bv-lbl-addr { display: none; }
 body.bv-mode-hal .bv-lbl-hal,
@@ -622,6 +645,7 @@ body.bv-mode-addr .bv-lbl-addr { display: inline; }
       "h-details" "email" "zip" "h-mode"
       "card-hal" "name1" "name2" "loc" "phone"
       "card-addr" "street" "apt" "city" "state" "country"
+      "card-pick"
       "promise";
   }
   /* On one column the name and phone sit under whichever card is chosen. */
@@ -630,8 +654,16 @@ body.bv-mode-addr .bv-lbl-addr { display: inline; }
       "h-details" "email" "zip" "h-mode"
       "card-hal"
       "card-addr" "name1" "name2" "street" "apt" "city" "state" "country" "phone"
+      "card-pick"
       "promise";
   }
+  body.bv-mode-pickup #customer_details {
+    grid-template-areas:
+      "h-details" "email" "h-mode"
+      "card-hal" "card-addr" "card-pick";
+  }
+  /* The heading's small print on a line of its own, not broken mid-phrase. */
+  .woocommerce-checkout .bv-h small { display: block; margin: 0.35rem 0 0; }
 }
 
 /* ── Order review + payment: ordinary, not an endeavour ── */
@@ -732,6 +764,69 @@ body.bv-mode-addr .bv-lbl-addr { display: inline; }
 #payment div.payment_box p { margin: 0 0 0.4rem; }
 #payment .place-order { padding: 1rem !important; }
 .woocommerce-checkout .woocommerce-privacy-policy-text { font-size: 0.85rem; color: var(--ink-soft); }
+
+/* ── The away card ──
+   When the shopkeeper is away (WooCommerce → Shopkeeper), a note laid on
+   the page: the crest, the message, and one way on. benevixit-shopkeeper.php
+   writes it; it shows once per tab session. */
+html.bv-away-open { overflow: hidden; }
+.bv-away {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: color-mix(in srgb, var(--paper) 60%, transparent);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.bv-away[hidden] { display: none; }
+.bv-away-sheet {
+  width: 100%;
+  max-width: 26rem;
+  padding: 2.4rem 2rem 2rem;
+  text-align: center;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(44, 40, 34, 0.06), 0 22px 56px rgba(44, 40, 34, 0.16);
+}
+.bv-away-crest { margin: 0 auto 1.4rem; }
+.bv-away-crest svg { height: 56px; margin: 0 auto; }
+.bv-away-h {
+  font-family: 'Cinzel', serif;
+  font-weight: 400;
+  font-size: 1.15rem;
+  letter-spacing: 0.1em;
+  line-height: 1.4;
+  color: var(--ink);
+  margin: 0 0 0.9rem;
+  text-shadow: calc(var(--sun-dx) * 0.7) calc(var(--sun-dy) * 0.7) 0 var(--press-hi);
+}
+.bv-away-p {
+  font-size: 1.1rem;
+  line-height: 1.55;
+  color: var(--ink-body);
+  margin: 0 0 0.5rem;
+}
+.bv-away-go {
+  margin-top: 1.4rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 0.3rem 0.4rem;
+  font-family: inherit;
+  font-size: 1.05rem;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+  cursor: pointer;
+}
+/* Focus shows as the accent (the button is focused when the card opens). */
+.bv-away-go:hover,
+.bv-away-go:focus { outline: none; color: var(--accent); border-color: var(--accent); }
+html.bv-night .bv-away-sheet { box-shadow: 0 22px 56px rgba(0, 0, 0, 0.45); }
 
 /* ── Ghost footer (matches the terminal) ── */
 #site-footer {

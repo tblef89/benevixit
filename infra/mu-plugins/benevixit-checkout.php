@@ -76,7 +76,20 @@ function bv_delivery_mode(array $posted = null) {
             $posted = [];
         }
     }
-    return ($posted['bv_delivery'] ?? 'hal') === 'address' ? 'address' : 'hal';
+    $mode = (string) ($posted['bv_delivery'] ?? 'hal');
+    if ($mode === 'address') {
+        return 'address';
+    }
+    // Collection in person exists only while the shopkeeper offers it
+    // (WooCommerce → Shopkeeper); a stale form asking for it gets HAL.
+    if ($mode === 'pickup' && function_exists('bv_pickup_enabled') && bv_pickup_enabled()) {
+        return 'pickup';
+    }
+    return 'hal';
+}
+
+function bv_mode_class($mode) {
+    return ['hal' => 'hal', 'address' => 'addr', 'pickup' => 'pickup'][$mode] ?? 'hal';
 }
 
 // Which posted key carries the chosen Hold-at-Location, if any. PluginHive's
@@ -231,7 +244,7 @@ add_filter('woocommerce_coupons_enabled', '__return_false');
 // is right before — or without — any script; the checkout script toggles it.
 add_filter('body_class', function ($classes) {
     if (bv_is_checkout()) {
-        $classes[] = 'bv-mode-' . (bv_delivery_mode() === 'address' ? 'addr' : 'hal');
+        $classes[] = 'bv-mode-' . bv_mode_class(bv_delivery_mode());
     }
     return $classes;
 });
@@ -241,7 +254,7 @@ add_action('woocommerce_after_checkout_billing_form', function () {
     $mode = bv_delivery_mode();
     ?>
     <div class="bv-mode">
-      <h3 class="bv-h" id="bv-h-mode">How should it reach you <small>One of these, never both.</small></h3>
+      <h3 class="bv-h" id="bv-h-mode">How should it reach you <small><?php echo function_exists('bv_pickup_enabled') && bv_pickup_enabled() ? 'Choose one.' : 'One of these, never both.'; ?></small></h3>
       <label class="bv-card<?php echo $mode === 'hal' ? ' is-chosen' : ''; ?>" id="bv-card-hal">
         <input type="radio" name="bv_delivery" value="hal" <?php checked($mode, 'hal'); ?>>
         <span class="bv-card-title">Hold at a FedEx location</span>
@@ -252,6 +265,13 @@ add_action('woocommerce_after_checkout_billing_form', function () {
         <span class="bv-card-title">Deliver to an address</span>
         <span class="bv-card-text">Tell us the address you'd like it delivered. Exact legal name not required.</span>
       </label>
+      <?php if (function_exists('bv_pickup_enabled') && bv_pickup_enabled()) : ?>
+      <label class="bv-card<?php echo $mode === 'pickup' ? ' is-chosen' : ''; ?>" id="bv-card-pick">
+        <input type="radio" name="bv_delivery" value="pickup" <?php checked($mode, 'pickup'); ?>>
+        <span class="bv-card-title">Collect in person</span>
+        <span class="bv-card-text"><?php echo esc_html(bv_pickup_note()); ?> Only your email is needed.</span>
+      </label>
+      <?php endif; ?>
     </div>
     <?php
 });
@@ -259,6 +279,8 @@ add_action('woocommerce_after_checkout_billing_form', function () {
 // The retention promise, while the purge job is keeping it.
 add_action('woocommerce_after_checkout_shipping_form', function () {
     if (BV_RETENTION_PROMISE !== '' && function_exists('bv_purge_is_live') && bv_purge_is_live()) {
+        // The theme hides it while "Collect in person" is chosen: there is
+        // no shipping information to delete.
         echo '<p id="bv-promise">' . esc_html(BV_RETENTION_PROMISE) . '</p>';
     }
 });
@@ -376,11 +398,53 @@ add_action('woocommerce_checkout_order_processed', function ($order_id) {
     $order->save();
 }, 100);
 
+// Collection in person: the cart ships nothing, so WooCommerce asks for no
+// shipping address or method and adds no shipping line (the order-review
+// refresh posts the choice too, so the totals follow it). Whatever a browser
+// autofilled into the hidden fields is dropped before the order is written:
+// the order keeps the email address and nothing else about the buyer.
+add_filter('woocommerce_cart_needs_shipping', function ($needs) {
+    return (bv_is_checkout() || wp_doing_ajax()) && bv_delivery_mode() === 'pickup' ? false : $needs;
+});
+
+add_filter('woocommerce_checkout_posted_data', function ($data) {
+    if (bv_delivery_mode($data) !== 'pickup') {
+        return $data;
+    }
+    foreach ($data as $key => $value) {
+        if ((strpos($key, 'shipping_') === 0 || strpos($key, 'billing_') === 0 || bv_is_hal_key($key)) && $key !== 'billing_email') {
+            $data[$key] = '';
+        }
+    }
+    $data['ship_to_different_address'] = false;
+    return $data;
+}, 20);
+
+add_action('woocommerce_checkout_order_processed', function ($order_id) {
+    $order = wc_get_order($order_id);
+    if ($order && $order->get_meta('_bv_delivery') === 'pickup') {
+        $order->add_order_note('bene vixit: collect in person. The buyer gives order number ' . $order->get_order_number() . '.');
+    }
+}, 100);
+
 // "… is a required field" with the label as the visitor read it, not the
 // markup behind it.
 add_filter('woocommerce_checkout_required_field_notice', function ($notice, $label) {
     return sprintf('%s is a required field.', '<strong>' . esc_html(bv_plain_label((string) $label)) . '</strong>');
 }, 10, 2);
+
+// The delivery choice is our own radio, not a WooCommerce checkout field,
+// so WooCommerce leaves it out of the posted data it hands to validation
+// and order creation. Without this, every order was taken for a FedEx hold:
+// "Deliver to an address" failed validation (asked for a FedEx location)
+// and the order recorded the wrong choice. Priority 1: before anything
+// else reads the data.
+add_filter('woocommerce_checkout_posted_data', function ($data) {
+    if (isset($_POST['bv_delivery']) && is_string($_POST['bv_delivery'])) {
+        $data['bv_delivery'] = sanitize_key(wp_unslash($_POST['bv_delivery']));
+    }
+    return $data;
+}, 1);
 
 // Server side: at order placement, billing takes the shipping address
 // wherever billing is empty, so orders carry a consistent address even if
@@ -396,7 +460,14 @@ add_filter('woocommerce_checkout_posted_data', function ($data) {
 
 // Remember the choice on the order, for fulfilment.
 add_action('woocommerce_checkout_create_order', function ($order, $data) {
-    $order->update_meta_data('_bv_delivery', bv_delivery_mode($data));
+    $mode = bv_delivery_mode($data);
+    $order->update_meta_data('_bv_delivery', $mode);
+    // The pickup note as the buyer read it at checkout: the emails quote
+    // this copy, so editing the note later (for the next event) never
+    // rewrites instructions someone has already been given.
+    if ($mode === 'pickup' && function_exists('bv_pickup_note')) {
+        $order->update_meta_data('_bv_pickup_note', bv_pickup_note());
+    }
 }, 10, 2);
 
 // Browser side: toggle the mode class on the body, place the shipping
@@ -458,16 +529,19 @@ function bv_checkout_script() {
   }
   function applyMode() {
     var mode = $('form.checkout input[name="bv_delivery"]:checked').val() || 'hal';
-    var hal = mode === 'hal';
-    $(document.body).toggleClass('bv-mode-hal', hal).toggleClass('bv-mode-addr', !hal);
+    var hal = mode === 'hal', addr = mode === 'address', pick = mode === 'pickup';
+    $(document.body).toggleClass('bv-mode-hal', hal).toggleClass('bv-mode-addr', addr).toggleClass('bv-mode-pickup', pick);
     $('#bv-card-hal').toggleClass('is-chosen', hal);
-    $('#bv-card-addr').toggleClass('is-chosen', !hal);
+    $('#bv-card-addr').toggleClass('is-chosen', addr);
+    $('#bv-card-pick').toggleClass('is-chosen', pick);
     // Street/town/state are only demanded of a delivery; the phone only of
-    // a pickup (FedEx needs it to say the parcel is ready).
+    // a FedEx hold (FedEx needs it to say the parcel is ready); the ZIP of
+    // anything FedEx carries. A collection in person asks for none of it.
     ['#shipping_address_1_field', '#shipping_city_field', '#shipping_state_field'].forEach(function (sel) {
-      $(sel).toggleClass('validate-required', !hal);
+      $(sel).toggleClass('validate-required', addr);
     });
     $('#shipping_phone_field').toggleClass('validate-required', hal);
+    $('#shipping_postcode_field').toggleClass('validate-required', !pick);
     markLocation();
   }
   $(function () {

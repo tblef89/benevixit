@@ -8,6 +8,8 @@
  * Hold-at-Location order shows the counter and the name FedEx will check;
  * a delivery shows the address.
  *
+ * A collection in person shows the pickup note and the order number.
+ *
  * Mail sent to us (the new-order notice) carries no address, name, email or
  * phone at all: the order in wp-admin has them until the purge takes them,
  * and a mailbox would keep them for good.
@@ -19,7 +21,33 @@
 
 defined('ABSPATH') || exit;
 
-if ($sent_to_admin || !$order->needs_shipping_address() || !$order->has_shipping_address()) {
+if ($sent_to_admin) {
+    return;
+}
+
+// A collection in person: no address was asked for; say how to collect
+// (until it has been collected).
+if ($order->get_meta('_bv_delivery') === 'pickup') {
+    if ($order->has_status('completed')) {
+        return;
+    }
+    // The note saved on the order at checkout; the live setting only for
+    // an order placed before notes were saved.
+    $pickup_note = (string) $order->get_meta('_bv_pickup_note');
+    if ($pickup_note === '') {
+        $pickup_note = function_exists('bv_pickup_note') ? bv_pickup_note() : 'In person.';
+    }
+    ?>
+    <div class="bv-address">
+    	<p class="bv-label">How to collect it</p>
+    	<p class="bv-address-lines"><?php echo esc_html($pickup_note); ?></p>
+    	<p>Your order number is <?php echo esc_html($order->get_order_number()); ?>.</p>
+    </div>
+    <?php
+    return;
+}
+
+if (!$order->needs_shipping_address() || !$order->has_shipping_address()) {
     return;
 }
 

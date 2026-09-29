@@ -18,7 +18,9 @@ defined('ABSPATH') || exit;
 
 do_action('woocommerce_email_header', $email_heading, $email);
 ?>
-<?php if ($order->get_meta('_bv_delivery') === 'hal') : ?>
+<?php if ($order->get_meta('_bv_delivery') === 'pickup') : ?>
+	<p>Your order has been collected. Thank you.</p>
+<?php elseif ($order->get_meta('_bv_delivery') === 'hal') : ?>
 	<p>Your order is with FedEx, on its way to the counter below. They will hold it for you.</p>
 <?php else : ?>
 	<p>Your order is with FedEx, on its way to you.</p>
@@ -28,7 +30,7 @@ do_action('woocommerce_email_order_details', $order, $sent_to_admin, $plain_text
 do_action('woocommerce_email_order_meta', $order, $sent_to_admin, $plain_text, $email);
 do_action('woocommerce_email_customer_details', $order, $sent_to_admin, $plain_text, $email);
 
-$promise = bv_email_retention_promise();
+$promise = $order->get_meta('_bv_delivery') === 'pickup' ? '' : bv_email_retention_promise();
 if ($promise) {
     echo '<p class="bv-promise">' . esc_html($promise) . '</p>';
 }
