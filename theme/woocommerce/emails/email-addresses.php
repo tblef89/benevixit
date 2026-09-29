@@ -31,10 +31,16 @@ if ($order->get_meta('_bv_delivery') === 'pickup') {
     if ($order->has_status('completed')) {
         return;
     }
+    // The note saved on the order at checkout; the live setting only for
+    // an order placed before notes were saved.
+    $pickup_note = (string) $order->get_meta('_bv_pickup_note');
+    if ($pickup_note === '') {
+        $pickup_note = function_exists('bv_pickup_note') ? bv_pickup_note() : 'In person.';
+    }
     ?>
     <div class="bv-address">
     	<p class="bv-label">How to collect it</p>
-    	<p class="bv-address-lines"><?php echo esc_html(function_exists('bv_pickup_note') ? bv_pickup_note() : 'In person.'); ?></p>
+    	<p class="bv-address-lines"><?php echo esc_html($pickup_note); ?></p>
     	<p>Your order number is <?php echo esc_html($order->get_order_number()); ?>.</p>
     </div>
     <?php

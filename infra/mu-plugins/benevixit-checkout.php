@@ -460,7 +460,14 @@ add_filter('woocommerce_checkout_posted_data', function ($data) {
 
 // Remember the choice on the order, for fulfilment.
 add_action('woocommerce_checkout_create_order', function ($order, $data) {
-    $order->update_meta_data('_bv_delivery', bv_delivery_mode($data));
+    $mode = bv_delivery_mode($data);
+    $order->update_meta_data('_bv_delivery', $mode);
+    // The pickup note as the buyer read it at checkout: the emails quote
+    // this copy, so editing the note later (for the next event) never
+    // rewrites instructions someone has already been given.
+    if ($mode === 'pickup' && function_exists('bv_pickup_note')) {
+        $order->update_meta_data('_bv_pickup_note', bv_pickup_note());
+    }
 }, 10, 2);
 
 // Browser side: toggle the mode class on the body, place the shipping
