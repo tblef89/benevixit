@@ -10,13 +10,24 @@
 defined('ABSPATH') || exit;
 
 /**
+ * Whether the email's order is a collection in person (checkout mode
+ * "pickup", see benevixit-checkout.php).
+ */
+function bv_email_is_pickup($email) {
+    $order = $email->object ?? null;
+    return $order instanceof WC_Order && $order->get_meta('_bv_delivery') === 'pickup';
+}
+
+/**
  * [subject, heading] per email id. %s is the order number.
  */
 function bv_email_words($id, $email) {
     $words = [
         'customer_on_hold_order'    => ['Payment seen: order %s', 'We see your payment'],
         'customer_processing_order' => ['Paid in full: order %s', 'Paid in full'],
-        'customer_completed_order'  => ['On its way: order %s', 'On its way'],
+        'customer_completed_order'  => bv_email_is_pickup($email)
+            ? ['Collected: order %s', 'Collected']
+            : ['On its way: order %s', 'On its way'],
         'customer_refunded_order'   => !empty($email->partial_refund)
             ? ['Partly refunded: order %s', 'Partly refunded']
             : ['Refunded: order %s', 'Refunded'],

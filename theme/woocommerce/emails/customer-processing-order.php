@@ -18,7 +18,11 @@ defined('ABSPATH') || exit;
 
 do_action('woocommerce_email_header', $email_heading, $email);
 ?>
-<p>Your payment has confirmed. We will pack your order and write again when it is with FedEx.</p>
+<?php if ($order->get_meta('_bv_delivery') === 'pickup') : ?>
+	<p>Your payment has confirmed. Your order is set aside for you: collect it in person and give your order number, <?php echo esc_html($order->get_order_number()); ?>.</p>
+<?php else : ?>
+	<p>Your payment has confirmed. We will pack your order and write again when it is with FedEx.</p>
+<?php endif; ?>
 <?php
 do_action('woocommerce_email_order_details', $order, $sent_to_admin, $plain_text, $email);
 do_action('woocommerce_email_order_meta', $order, $sent_to_admin, $plain_text, $email);

@@ -17,9 +17,12 @@ defined('ABSPATH') || exit;
 
 do_action('woocommerce_email_header', $email_heading, $email);
 
-$hal = $order->get_meta('_bv_delivery') === 'hal';
+$how = [
+    'hal'    => 'To be held at a FedEx location.',
+    'pickup' => 'To be collected in person: the buyer gives order number ' . $order->get_order_number() . '.',
+][$order->get_meta('_bv_delivery')] ?? 'To be delivered to an address.';
 ?>
-<p><?php echo $hal ? 'To be held at a FedEx location.' : 'To be delivered to an address.'; ?> The customer’s details are in <a href="<?php echo esc_url($order->get_edit_order_url()); ?>">the order</a>, not in this email.</p>
+<p><?php echo esc_html($how); ?> The customer’s details are in <a href="<?php echo esc_url($order->get_edit_order_url()); ?>">the order</a>, not in this email.</p>
 <?php
 do_action('woocommerce_email_order_details', $order, $sent_to_admin, $plain_text, $email);
 do_action('woocommerce_email_order_meta', $order, $sent_to_admin, $plain_text, $email);
