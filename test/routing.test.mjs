@@ -149,3 +149,53 @@ test('shop redirect Location is rewritten to the public hostname', async () => {
   assert.equal(loc.pathname, '/wp-login.php');
   assert.equal(loc.searchParams.get('redirect_to'), '/wp-admin/');
 });
+
+// The files crawlers and assistants look for come from ASSETS, before
+// WordPress (whose own robots.txt would otherwise answer).
+for (const [path, type, text] of [
+  ['/robots.txt', /text\/plain/, /Sitemap: https:\/\/benevixit\.com\/sitemap\.xml/],
+  ['/sitemap.xml', /xml/, /<loc>https:\/\/benevixit\.com\/faq<\/loc>/],
+  ['/llms.txt', /text\/plain/, /accepts only Zcash/],
+  ['/.well-known/security.txt', /text\/plain/, /Contact: mailto:shopkeeper@benevixit\.com/],
+  ['/faq', /text\/html/, /<h1>Questions<\/h1>/],
+]) {
+  test(`GET ${path} is served from ASSETS`, async () => {
+    const res = await fetch(`${W}${path}`);
+    assert.equal(res.status, 200);
+    assert.ok(!isStubEcho(res), `${path} must not reach the shop`);
+    assert.match(res.headers.get('content-type') || '', type);
+    assert.match(await res.text(), text);
+  });
+}
+
+test('robots.txt keeps crawlers off the gate and the shop, and nothing else', async () => {
+  const body = await (await fetch(`${W}/robots.txt`)).text();
+  const disallow = body.split('\n').filter((l) => l.startsWith('Disallow:')).map((l) => l.slice(9).trim());
+  for (const p of ['/gate/', '/cart', '/checkout', '/my-account', '/wp-admin/']) {
+    assert.ok(disallow.includes(p), `must disallow ${p}`);
+  }
+  assert.ok(!disallow.includes('/'), 'must not disallow everything');
+  assert.ok(!disallow.some((p) => p === '/faq' || p === '/llms.txt'));
+});
+
+test('security.txt has not expired', async () => {
+  const body = await (await fetch(`${W}/.well-known/security.txt`)).text();
+  const expires = Date.parse(body.match(/^Expires: (.+)$/m)[1]);
+  assert.ok(expires > Date.now(), 'renew the Expires line (RFC 9116: at most a year ahead)');
+});
+
+test('the FAQ structured data says what the page says, word for word', async () => {
+  const html = await (await fetch(`${W}/faq`)).text();
+  const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+  const faq = ld['@graph'].find((n) => n['@type'] === 'FAQPage');
+  const unescape = (s) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  const main = html.slice(html.indexOf('<h1>'));
+  const shown = [...main.matchAll(/<h2>([\s\S]*?)<\/h2>([\s\S]*?)(?=<h2>|<\/main>)/g)].map(([, q, rest]) => ({
+    q: unescape(q),
+    a: [...rest.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => unescape(m[1]).replace(/\s+/g, ' ').trim()).join('\n\n'),
+  }));
+  assert.deepEqual(
+    faq.mainEntity.map((e) => ({ q: e.name, a: e.acceptedAnswer.text })),
+    shown,
+  );
+});

@@ -11,7 +11,7 @@
       "art": "/art/key.svg"
     },
     {
-      "match": "^/(product|cart|checkout|terms|privacy)(/|\\.html|$)",
+      "match": "^/(product|cart|checkout|terms|privacy|faq)(/|\\.html|$)",
       "art": "/art/key.svg"
     }
   ]

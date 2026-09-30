@@ -1,0 +1,6 @@
+# If you have found a way to reach a buyer's information, or anything
+# else that would put them at risk, please tell us before anyone else.
+Contact: mailto:shopkeeper@benevixit.com
+Expires: 2027-09-29T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://benevixit.com/.well-known/security.txt
