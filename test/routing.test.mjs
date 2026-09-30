@@ -189,10 +189,14 @@ test('the FAQ structured data says what the page says, word for word', async () 
   const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
   const faq = ld['@graph'].find((n) => n['@type'] === 'FAQPage');
   const unescape = (s) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  const tidy = (s) => unescape(s).replace(/\s+/g, ' ').trim();
   const main = html.slice(html.indexOf('<h1>'));
   const shown = [...main.matchAll(/<h2>([\s\S]*?)<\/h2>([\s\S]*?)(?=<h2>|<\/main>)/g)].map(([, q, rest]) => ({
     q: unescape(q),
-    a: [...rest.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => unescape(m[1]).replace(/\s+/g, ' ').trim()).join('\n\n'),
+    // A paragraph is a block; a list is one block, an item to a line.
+    a: [...rest.matchAll(/<p>([\s\S]*?)<\/p>|<ul>([\s\S]*?)<\/ul>/g)].map(([, p, ul]) => p !== undefined
+      ? tidy(p)
+      : [...ul.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((li) => tidy(li[1])).join('\n')).join('\n\n'),
   }));
   assert.deepEqual(
     faq.mainEntity.map((e) => ({ q: e.name, a: e.acceptedAnswer.text })),

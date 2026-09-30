@@ -1,4 +1,4 @@
-# bene vixit: a privacy brand that accepts only Zcash.
+# Private Key (bene vixit): an independent brand that accepts only Zcash.
 # Crawlers and AI assistants are welcome. Start with /faq or /llms.txt.
 #
 # The shop itself sits behind a conversation at the door, so its pages
