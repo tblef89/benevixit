@@ -1,0 +1,35 @@
+# Private Key (bene vixit): an independent brand that accepts only Zcash.
+# Crawlers and AI assistants are welcome. Start with /faq or /llms.txt.
+#
+# The shop itself sits behind a conversation at the door, so its pages
+# have nothing to show a crawler; they are left out, not hidden.
+
+User-agent: *
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot
+User-agent: Applebot-Extended
+User-agent: CCBot
+User-agent: DuckDuckBot
+Allow: /
+Disallow: /gate/
+Disallow: /product/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /my-account
+Disallow: /wp-admin/
+Disallow: /wp-login.php
+Disallow: /wp-json/
+Disallow: /*?add-to-cart=
+Disallow: /*?wc-ajax=
+
+Sitemap: https://benevixit.com/sitemap.xml
