@@ -22,7 +22,7 @@ src/gate/passphrase.js    rotating word-of-mouth entry
 src/lib/manifest.js       gate manifest loader (KV, with code defaults)
 src/lib/turnstile.js      Turnstile siteverify
 public/                   terminal frontend (no build step)
-manifest.example.json     full gate manifest shape → KV key "manifest"
+manifest.example.json     the gate manifest (keeper voice, thresholds) and its defaults → KV key "manifest"
 extras/wordpress/         mu-plugin that verifies grants on the WooCommerce side
 ```
 

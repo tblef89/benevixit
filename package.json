@@ -6,7 +6,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
-    "test": "bash test/run-routing.sh"
+    "test": "node --test test/unit.test.mjs && bash test/run-routing.sh"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

@@ -4,6 +4,8 @@
  * The judge's output is advisory: the deterministic threshold check in
  * decideVerdict() is what actually gates access. Parse failures fail closed.
  */
+import { aiText } from '../lib/ai-text.js';
+
 export async function judgeTranscript(env, manifest, transcript) {
   // Only visitor turns are scored, each fenced so injected text cannot forge
   // turn structure. Visitor content is already sanitised at intake; the fence
@@ -34,12 +36,12 @@ export async function judgeTranscript(env, manifest, transcript) {
     { gateway: { id: env.GATEWAY_ID } },
   );
 
-  // Output shape varies by model: `response` may be a string, or an
-  // already-parsed object when the model emits pure JSON (llama-3.3 does
-  // this), or OpenAI-style choices. Handle all three.
-  const out = res?.response ?? res?.choices?.[0]?.message?.content ?? '';
-  if (out !== null && typeof out === 'object') return clampScores(out);
-  return parseScores(String(out));
+  // Output shape varies by model: `response` may be an already-parsed object
+  // when the model emits pure JSON (llama-3.3 does this); otherwise take the
+  // text, whatever shape it came in (aiText).
+  const parsed = res?.response;
+  if (parsed !== null && typeof parsed === 'object') return clampScores(parsed);
+  return parseScores(aiText(res));
 }
 
 function clampScores(raw) {
