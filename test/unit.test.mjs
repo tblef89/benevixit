@@ -87,3 +87,23 @@ test('the library fails open: no binding, switched off, an error, a timeout or n
   assert.equal(await consultLibrary({ KEEPER_LIBRARY: { search: () => new Promise(() => {}) } }, { library: { timeoutMs: 20 } }, t), '');
   assert.equal(await consultLibrary({ KEEPER_LIBRARY: { search: async () => ({ chunks: [] }) } }, {}, t), '');
 });
+
+test('every library lookup logs its outcome and scores, never the query or the passages', async () => {
+  const { consultLibrary } = await import('../src/gate/library.js');
+  const lines = [];
+  const orig = console.log;
+  console.log = (s) => lines.push(s);
+  try {
+    const t = [{ role: 'user', content: 'my secret question about viewing keys' }];
+    await consultLibrary({ KEEPER_LIBRARY: { search: async () => ({ chunks: [{ text: 'passage text', score: 0.612 }] }) } }, {}, t);
+    await consultLibrary({ KEEPER_LIBRARY: { search: async () => ({ chunks: [] }) } }, {}, t);
+    await consultLibrary({ KEEPER_LIBRARY: { search: () => new Promise(() => {}) } }, { library: { timeoutMs: 20 } }, t);
+    await consultLibrary({ KEEPER_LIBRARY: { search: async () => { throw new Error('x'); } } }, {}, t);
+  } finally {
+    console.log = orig;
+  }
+  const logged = lines.map((l) => JSON.parse(l));
+  assert.deepEqual(logged.map((l) => l.library), ['found', 'no-match', 'timeout', 'error']);
+  assert.deepEqual(logged[0].scores, [0.61]);
+  assert.ok(!lines.join('').includes('secret') && !lines.join('').includes('passage text'));
+});
