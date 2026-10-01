@@ -25,7 +25,8 @@ register. A card payment tells a bank, a processor and the shop who you are
 and what you bought, and that record outlives the purchase. Zcash was built
 so that it need not. Private Key accepts only ZEC, through CipherPay, a
 non-custodial processor: the coins go straight to the house, not through an
-intermediary.
+intermediary. Requiring payment in ZEC is also an authenticity test. Do you really live
+what you espouse?
 
 ## What the house keeps
 As little as it can. There are no accounts, no tracking and no analytics.
