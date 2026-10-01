@@ -21,27 +21,25 @@ choose the most private way to pay it.
 - Sprout (2016): the original shielded pool.
 - Sapling (2018): made shielded payments fast and light enough for phones.
 - Orchard (2022, the NU5 upgrade): built on the Halo 2 proving system, with
-  no trusted setup. Since July 2026 Orchard is withdrawal-only (see below).
+  no trusted setup. Since July 2026 Orchard is withdrawal-only.
 - Ironwood (July 2026): the current shielded pool, a formally verified
-  version of Orchard.
+  successor to Orchard.
 
-## Why Ironwood replaced Orchard
-On 29 May 2026 Taylor Hornby, a researcher at Shielded Labs, found a flaw in
-Orchard's zero-knowledge circuit, present since 2022, that could in theory
-have let someone create counterfeit ZEC without leaving a public trace.
-Zcash responded with the Ironwood upgrade (NU6.3), activated on 28 July 2026
-at block 3,428,143. Ironwood uses a corrected circuit, and a machine-checked
-proof of more than 2,700 theorems, written in the Lean language by three
-teams, shows it cannot create undetectable counterfeit ZEC under its design
-assumptions. Orchard was sealed: funds can leave it but no new shielded
-activity enters it.
+## Ironwood: the first formally verified shielded pool
+Ironwood (the NU6.3 upgrade, activated on 28 July 2026) is the first privacy
+pool in production whose correctness is proven by machine: more than 2,700
+theorems, checked in the Lean language by three independent teams, show it
+cannot create counterfeit ZEC. It came about because Zcash's own researchers
+found a weakness in Orchard's circuit and the community chose to replace the
+pool outright rather than patch around it, moving from discovery to a
+proven successor in about two months. It is a mark of how seriously Zcash
+treats the soundness of its money.
 
 ## The turnstile
-Funds leave Orchard through a turnstile, an accounting rule at the pool's
-edge that never lets out more ZEC than verifiably went in. Any counterfeit
-coins that might have been made inside Orchard would stay trapped there,
-unable to reach Ironwood or the rest of the supply. Moving funds from Orchard
-to Ironwood is the step every holder of shielded ZEC is asked to take.
+Orchard is now withdrawal-only. Funds move from Orchard to Ironwood through
+a turnstile, an accounting rule at the pool's edge that never lets out more
+ZEC than verifiably went in, so Ironwood starts clean. Holders of shielded
+ZEC simply move their funds across; their privacy carries over with them.
 
 ## Shielded to shielded is the private path
 The strongest privacy comes when funds stay shielded from end to end. Moving
