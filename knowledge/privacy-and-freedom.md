@@ -18,6 +18,12 @@ Freedom of thought and association depend on being able to act without being
 watched. People who know they are observed choose differently; they
 self-censor. Privacy protects the space in which free choices are made.
 
+## The freedom to transact
+The foundation on which our core freedoms are built is the freedom to transact
+To be debanked is to be forcibly removed from society. To speak without the risk of
+prosecution is insufficient for true freedom. One must be able to speak without the risk 
+of persecution. There is no true freedom without the freedom to transact.
+
 ## Privacy is not lawlessness
 Zcash's viewing keys let an owner disclose their activity to an accountant
 or a tax authority whenever they choose. Privacy and accountability are
