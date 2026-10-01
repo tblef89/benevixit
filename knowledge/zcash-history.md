@@ -22,5 +22,5 @@ protocol. Neither is affiliated with Private Key.
 
 ## Block time
 Since the Blossom upgrade in December 2019, a new Zcash block is produced
-about every 75 seconds, half the original 150 seconds. The NU7 upgrade,
-planned for November 2026, would cut this to 25 seconds.
+about every 75 seconds, half the original 150 seconds. NU7 drops block times to
+25 seconds.
