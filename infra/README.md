@@ -131,6 +131,18 @@ Update the KV manifest (`GATE_KV` → `manifest`):
 
 When step 4 holds end-to-end, the store is launchable.
 
+**Labels** are printed on a Rollo (USB, direct thermal) onto generic 4×6
+direct-thermal labels. FedEx plugin → Label settings: image type **PDF**,
+stock **`STOCK_4X6`** (the Rollo has no ZPL). Print at **actual size /
+100%**, never "fit to page", or the barcodes scale; if a label comes out
+offset or shrunk, set the paper size to 4×6 in the Rollo driver's printing
+preferences. Use the Rollo over USB with its driver alone; the Rollo Ship
+app and account are not needed. (Before the Rollo: PNG on `PAPER_4X6`.)
+
+A label shows a buyer's name and address: shred misprints rather than
+binning them, and delete downloaded label files once printed (they would
+outlive the purge).
+
 ## 6b. When the shopkeeper is away
 
 **WooCommerce → Shopkeeper** (`mu-plugins/benevixit-shopkeeper.php`) has
