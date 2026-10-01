@@ -28,8 +28,8 @@ choose the most private way to pay it.
 ## Ironwood: the first formally verified shielded pool
 Ironwood (the NU6.3 upgrade, activated on 28 July 2026) is the first privacy
 pool in production whose correctness is proven by machine: more than 2,700
-theorems, checked in the Lean language by three independent teams, show it
-cannot create counterfeit ZEC. It came about because Zcash's own researchers
+theorems, written in the Lean language by three teams of researchers, show
+that under its design assumptions it cannot create counterfeit ZEC. It came about because Zcash's own researchers
 found a weakness in Orchard's circuit and the community chose to replace the
 pool outright rather than patch around it, moving from discovery to a
 proven successor in about two months. It is a mark of how seriously Zcash
