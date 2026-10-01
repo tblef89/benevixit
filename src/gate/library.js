@@ -9,7 +9,7 @@
  * stays small however large the library grows.
  *
  * Only our own reviewed files are indexed; nothing a visitor writes is ever
- * stored there. The lookup fails open: no binding, a slow or failed search,
+ * stored there. The lookup fails open: no binding, a slow (3 s) or failed search,
  * or no close match all mean the turn goes ahead on the core facts alone.
  */
 const HEADER =
@@ -30,13 +30,24 @@ export async function consultLibrary(env, manifest, transcript) {
     .slice(0, 1000);
   if (!query.trim()) return '';
 
+  // One log line per lookup, so a library that never answers is visible in
+  // Workers Logs: the outcome, timing, and match scores. Never the query or
+  // the passages, which would put the visitor's words in the logs.
+  const started = Date.now();
+  const note = (outcome, chunks = []) => console.log(JSON.stringify({
+    library: outcome,
+    ms: Date.now() - started,
+    found: chunks.length,
+    scores: chunks.map((c) => Math.round((c?.score ?? 0) * 100) / 100),
+  }));
+
   try {
     const search = env.KEEPER_LIBRARY.search({
       query,
       ai_search_options: {
         retrieval: {
           max_num_results: cfg.maxResults ?? 3,
-          match_threshold: cfg.matchThreshold ?? 0.5,
+          match_threshold: cfg.matchThreshold ?? 0.3,
           return_on_failure: true,
         },
         // No extra model call to rewrite the visitor's words, no reranker,
@@ -47,16 +58,24 @@ export async function consultLibrary(env, manifest, transcript) {
         cache: { enabled: false },
       },
     });
+    const TIMED_OUT = Symbol('timeout');
     let timer;
     const res = await Promise.race([
       search,
-      new Promise((resolve) => { timer = setTimeout(() => resolve(null), cfg.timeoutMs ?? 1500); }),
+      new Promise((resolve) => { timer = setTimeout(() => resolve(TIMED_OUT), cfg.timeoutMs ?? 3000); }),
     ]).finally(() => clearTimeout(timer));
-    const passages = (res?.chunks || [])
+    if (res === TIMED_OUT) {
+      note('timeout');
+      return '';
+    }
+    const chunks = Array.isArray(res?.chunks) ? res.chunks : [];
+    const passages = chunks
       .map((c) => (typeof c?.text === 'string' ? c.text.trim().slice(0, cfg.maxCharsPerPassage ?? 900) : ''))
       .filter(Boolean);
+    note(passages.length ? 'found' : 'no-match', chunks);
     return passages.length ? `${HEADER}\n${passages.join('\n---\n')}` : '';
   } catch (e) {
+    note('error');
     console.error('library lookup failed', e?.message || e);
     return '';
   }

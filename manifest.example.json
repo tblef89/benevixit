@@ -10,7 +10,8 @@
   "library": {
     "enabled": true,
     "maxResults": 3,
-    "matchThreshold": 0.5
+    "matchThreshold": 0.3,
+    "timeoutMs": 3000
   },
   "minTurnsBeforeJudge": 3,
   "maxTurns": 15,
