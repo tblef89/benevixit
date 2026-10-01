@@ -56,3 +56,34 @@ test('keeper and judge calls ask the AI Gateway not to log or cache them', async
     assert.ok(src.includes('gatewayOptions('), `${f} must pass gatewayOptions()`);
   }
 });
+
+test('the library is consulted with the last visitor turns, and never caches or rewrites them', async () => {
+  const { consultLibrary } = await import('../src/gate/library.js');
+  let seen;
+  const env = { KEEPER_LIBRARY: { search: async (req) => { seen = req; return { chunks: [{ text: ' Viewing keys are read-only. ' }, { text: 'Sapling came in 2018.' }] }; } } };
+  const transcript = [
+    { role: 'user', content: 'first' }, { role: 'assistant', content: 'reply' },
+    { role: 'user', content: 'second' }, { role: 'assistant', content: 'reply' },
+    { role: 'user', content: 'what is a viewing key?' },
+  ];
+  const out = await consultLibrary(env, { library: { maxResults: 2 } }, transcript);
+  assert.equal(seen.query, 'second\nwhat is a viewing key?');
+  assert.equal(seen.ai_search_options.retrieval.max_num_results, 2);
+  assert.equal(seen.ai_search_options.cache.enabled, false);
+  assert.equal(seen.ai_search_options.query_rewrite.enabled, false);
+  assert.match(out, /^From the house library/);
+  assert.match(out, /Viewing keys are read-only\.\n---\nSapling came in 2018\./);
+});
+
+test('the library fails open: no binding, switched off, an error, a timeout or no match', async () => {
+  const { consultLibrary } = await import('../src/gate/library.js');
+  const t = [{ role: 'user', content: 'hello' }];
+  assert.equal(await consultLibrary({}, {}, t), '');
+  let called = false;
+  const spy = { KEEPER_LIBRARY: { search: async () => { called = true; return { chunks: [{ text: 'x' }] }; } } };
+  assert.equal(await consultLibrary(spy, { library: { enabled: false } }, t), '');
+  assert.equal(called, false);
+  assert.equal(await consultLibrary({ KEEPER_LIBRARY: { search: async () => { throw new Error('down'); } } }, {}, t), '');
+  assert.equal(await consultLibrary({ KEEPER_LIBRARY: { search: () => new Promise(() => {}) } }, { library: { timeoutMs: 20 } }, t), '');
+  assert.equal(await consultLibrary({ KEEPER_LIBRARY: { search: async () => ({ chunks: [] }) } }, {}, t), '');
+});

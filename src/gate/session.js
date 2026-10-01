@@ -12,6 +12,7 @@ import { mintGrant } from './grant.js';
 import { sanitizeMessage } from '../lib/sanitize.js';
 import { aiText } from '../lib/ai-text.js';
 import { gatewayOptions } from '../lib/gateway.js';
+import { consultLibrary } from './library.js';
 
 export class GateSession {
   constructor(ctx, env) {
@@ -59,7 +60,10 @@ export class GateSession {
     transcript.push({ role: 'user', content: message });
 
     const teaching = (await this.ctx.storage.get('teaching')) || false;
-    const facts = manifest.zcashFacts ? `${manifest.zcashFacts}\n\n` : '';
+    // Passages from the library that bear on what the visitor just said;
+    // the keeper and the judge read the same ones (see library.js).
+    const library = await consultLibrary(this.env, manifest, transcript);
+    const facts = [manifest.zcashFacts, library].filter(Boolean).map((s) => `${s}\n\n`).join('');
     const system = teaching
       ? `${facts}${manifest.persona}\n\n${manifest.teachAddendum}`
       : `${facts}${manifest.persona}`;
@@ -79,7 +83,7 @@ export class GateSession {
     // eat the Keeper's reply: fail closed to no-pass.
     const judged = turns + 1 >= manifest.minTurnsBeforeJudge;
     const judgePromise = judged
-      ? judgeTranscript(this.env, manifest, transcript).catch((e) => {
+      ? judgeTranscript(this.env, manifest, transcript, library).catch((e) => {
           console.error('judge failed', e);
           return null;
         })

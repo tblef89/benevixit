@@ -9,6 +9,9 @@ name: Setup
 #   3. seed-manifest   → loads manifest.example.json into KV (edit it first!)
 #   4. sync-secrets    → pushes GRANT_SECRET + TURNSTILE_SECRET repo secrets to the
 #                        Worker (requires the Worker to be deployed, i.e. after step 2)
+#   sync-library       → uploads knowledge/*.md to the R2 bucket keeper-library,
+#                        which the AI Search instance keeper-library indexes
+#                        (the API token needs R2 edit permission)
 
 on:
   workflow_dispatch:
@@ -21,6 +24,7 @@ on:
           - create-kv
           - seed-manifest
           - sync-secrets
+          - sync-library
 
 jobs:
   setup:
@@ -50,3 +54,15 @@ jobs:
           [ -n "$TURNSTILE_SECRET" ] || { echo "TURNSTILE_SECRET repo secret is not set"; exit 1; }
           printf '%s' "$GRANT_SECRET" | npx wrangler@4 secret put GRANT_SECRET
           printf '%s' "$TURNSTILE_SECRET" | npx wrangler@4 secret put TURNSTILE_SECRET
+
+      - name: Upload the keeper's library to R2
+        if: inputs.task == 'sync-library'
+        run: |
+          shopt -s nullglob
+          n=0
+          for f in knowledge/*.md; do
+            [ "$(basename "$f")" = README.md ] && continue
+            npx wrangler@4 r2 object put "keeper-library/$(basename "$f")" --file "$f" --content-type text/markdown --remote
+            n=$((n + 1))
+          done
+          echo "uploaded $n file(s); AI Search re-indexes on its next sync (or press Sync in the dashboard)"

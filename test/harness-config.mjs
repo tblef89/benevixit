@@ -3,7 +3,7 @@
 // The routing tests run the REAL wrangler dev runtime (workerd + the static
 // assets layer) so that `assets.run_worker_first` is exercised exactly as
 // in production. Three things are adjusted for loopback only:
-//   - `ai` and `unsafe` (rate-limit) bindings are remote-only in dev and
+//   - `ai`, `ai_search` and `unsafe` (rate-limit) bindings are remote-only in dev and
 //     would demand an API token; they are not on the routing path.
 //   - `routes` would make dev present request.url as https://benevixit.com,
 //     which breaks a loopback origin; production has no such mismatch.
@@ -37,6 +37,7 @@ const port = process.env.PORT || '8787';
 const stubAddr = process.env.STUB_ADDR || '127.0.0.2';
 const cfg = JSON.parse(stripJsonc(readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8')));
 delete cfg.ai;
+delete cfg.ai_search;
 delete cfg.unsafe;
 delete cfg.routes;
 cfg.vars = {

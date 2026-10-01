@@ -26,6 +26,10 @@
   // Workers AI — all calls routed through the AI Gateway (see GATEWAY_ID below).
   "ai": { "binding": "AI" },
 
+  // The keeper's library (src/gate/library.js): Cloudflare AI Search over
+  // the markdown in knowledge/. The instance must exist before this deploys.
+  "ai_search": [{ "binding": "KEEPER_LIBRARY", "instance_name": "keeper-library" }],
+
   // Workers Logs — invocation logs + console.error from the DO, viewable in the dashboard.
   "observability": { "enabled": true },
 
