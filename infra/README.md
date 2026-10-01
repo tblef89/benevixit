@@ -131,6 +131,15 @@ Update the KV manifest (`GATE_KV` → `manifest`):
 
 When step 4 holds end-to-end, the store is launchable.
 
+**Labels** (FedEx plugin → Label settings): stock `PAPER_4X6`, a 4×6 label
+for an ordinary printer or a thermal printer's system driver. Print at
+**actual size / 100%**, never "fit to page", or the barcodes scale. The
+image type is PNG today; PDF carries its physical size and prints true
+more reliably, so prefer it. A label shows a buyer's name and address:
+shred misprints, and delete downloaded label files once printed (they
+would outlive the purge). Thermal printer later: stock `STOCK_4X6`, image
+PDF, or ZPLII on a Zebra.
+
 ## 6b. When the shopkeeper is away
 
 **WooCommerce → Shopkeeper** (`mu-plugins/benevixit-shopkeeper.php`) has
