@@ -45,3 +45,14 @@ test('the example manifest is the full shape the gate expects', async () => {
     assert.ok(m[key], `manifest.example.json is missing ${key}`);
   }
 });
+
+test('keeper and judge calls ask the AI Gateway not to log or cache them', async () => {
+  const { gatewayOptions } = await import('../src/lib/gateway.js');
+  assert.deepEqual(gatewayOptions({ GATEWAY_ID: 'gw' }), { gateway: { id: 'gw', collectLog: false, skipCache: true } });
+  const { readFileSync } = await import('node:fs');
+  for (const f of ['src/gate/session.js', 'src/gate/judge.js']) {
+    const src = readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+    assert.ok(!/gateway:\s*\{/.test(src), `${f} must use gatewayOptions(), not its own gateway options`);
+    assert.ok(src.includes('gatewayOptions('), `${f} must pass gatewayOptions()`);
+  }
+});

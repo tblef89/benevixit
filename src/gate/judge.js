@@ -5,6 +5,7 @@
  * decideVerdict() is what actually gates access. Parse failures fail closed.
  */
 import { aiText } from '../lib/ai-text.js';
+import { gatewayOptions } from '../lib/gateway.js';
 
 export async function judgeTranscript(env, manifest, transcript) {
   // Only visitor turns are scored, each fenced so injected text cannot forge
@@ -33,7 +34,7 @@ export async function judgeTranscript(env, manifest, transcript) {
       max_tokens: 150,
       temperature: 0.1,
     },
-    { gateway: { id: env.GATEWAY_ID } },
+    gatewayOptions(env),
   );
 
   // Output shape varies by model: `response` may be an already-parsed object

@@ -11,6 +11,7 @@ import { judgeTranscript, decideVerdict } from './judge.js';
 import { mintGrant } from './grant.js';
 import { sanitizeMessage } from '../lib/sanitize.js';
 import { aiText } from '../lib/ai-text.js';
+import { gatewayOptions } from '../lib/gateway.js';
 
 export class GateSession {
   constructor(ctx, env) {
@@ -71,7 +72,7 @@ export class GateSession {
         messages: [{ role: 'system', content: system }, ...transcript],
         max_tokens: manifest.maxReplyTokens,
       },
-      { gateway: { id: this.env.GATEWAY_ID } },
+      gatewayOptions(this.env),
     );
     // Judge from minTurnsBeforeJudge onward. The verdict is decided in code;
     // nothing the chat model says can grant access. Judge trouble must not
