@@ -10,6 +10,7 @@ import { loadManifest } from '../lib/manifest.js';
 import { judgeTranscript, decideVerdict } from './judge.js';
 import { mintGrant } from './grant.js';
 import { sanitizeMessage } from '../lib/sanitize.js';
+import { aiText } from '../lib/ai-text.js';
 
 export class GateSession {
   constructor(ctx, env) {
@@ -96,7 +97,7 @@ export class GateSession {
     // scripted admission line. No latency cost — both calls already ran.
     const reply = passed
       ? manifest.passLine
-      : (res.response ?? '...').trim();
+      : aiText(res).trim() || '...';
     transcript.push({ role: 'assistant', content: reply });
     await this.ctx.storage.put('transcript', transcript);
 
