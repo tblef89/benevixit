@@ -14,4 +14,5 @@ had colluded and kept their secret material, they could in principle have
 forged coins, though not broken anyone's privacy. The ceremonies were run
 with several independent participants, so that a single honest one was enough.
 Orchard, introduced in 2022, uses the Halo 2 proving system, which removed 
-the trusted setup entirely. Modern Zcash does not rely on trusted setups.
+the trusted setup entirely. Ironwood, which replaced Orchard in 2026, keeps
+Halo 2. Modern Zcash does not rely on trusted setups.
