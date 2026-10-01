@@ -13,5 +13,5 @@ ceremony to generate public parameters. If every participant in a ceremony
 had colluded and kept their secret material, they could in principle have
 forged coins, though not broken anyone's privacy. The ceremonies were run
 with several independent participants, so that a single honest one was enough.
-Orchard, introduced in 2022, uses the Halo 2 proving system, which needs no
-trusted setup at all.
+Orchard, introduced in 2022, uses the Halo 2 proving system, which removed 
+the trusted setup entirely. Modern Zcash does not rely on trusted setups.
