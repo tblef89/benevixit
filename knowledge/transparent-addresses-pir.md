@@ -1,53 +1,85 @@
 # Protecting transparent addresses: rotation and private queries
 
-(Current as of October 2026. Based on a design published by Zakura, a team
-that builds Zcash full-node software. Dates are plans, not promises; say so
-when you speak of them.)
+(Current as of October 2026. Based on "A Privacy Layer for Transparent
+Wallets" by Roman Akhtariev of Zakura, a team that builds Zcash full-node
+software. Dates are plans, not promises; say so when you speak of them.)
 
 ## The short answer
 Shielded Zcash is the private path: sender, receiver and amount are
 encrypted on-chain. Transparent addresses, the ones beginning with "t", are
-public like Bitcoin. Zakura's work does not make transparent payments
-private; it narrows two quieter leaks around them: wallets that reveal which
-addresses they own when they look them up, and public keys left exposed by
-reusing an address.
+public like Bitcoin, and this work does not change that. It closes two
+quieter leaks around them: public keys left exposed by reusing an address,
+and wallets that reveal which addresses they own when they look them up.
 
-## The lookup leak
-A light wallet does not read the whole blockchain itself; it asks a server
-for the history and balance of its addresses. Even when nothing on-chain
-links those addresses together, the server sees one wallet asking about all
-of them, and learns that they share an owner. The server becomes the weak
-point, not the chain.
-
-## Private information retrieval
-Private information retrieval (PIR) is a cryptographic technique that lets
-a wallet fetch the records it needs without the server learning which
-records it asked for. Applied to transparent addresses, a wallet can keep
-track of its balances and history while the server stays blind to which
-addresses are its own. In October 2026 an experimental, opt-in version was
-reported to be arriving in the Vizor wallet, under a setting for private
-queries.
+## Why hidden public keys matter
+A standard transparent address (t1...) holds a hash of a public key, not the
+key itself. The key appears on-chain only when the owner spends from that
+address. Anyone worried that advances in cryptography, whether from quantum
+computers or AI-assisted research, might one day recover private keys from
+public ones has reason to keep public keys out of sight. A key that is still
+hidden behind its hash keeps that extra protection.
 
 ## Rotating addresses
-A transparent address holds only a fingerprint (a hash) of a public key. The
-key itself appears on-chain the first time the owner spends from that
-address. Reusing the address leaves that exposed key guarding whatever
-arrives later. The design has wallets move to a fresh address after every
-transaction, so each key is exposed once and then retired. It is good
-practice for privacy too: fewer reused addresses means fewer links for an
-observer to draw.
+The habit is simple: use a fresh address for every transaction, and move any
+remaining funds to a new address after spending. Once a public key is
+exposed, everything left at that address, or sent there later, sits behind a
+key that is now public; a fresh address puts it back behind a hash.
+Rotation needs no new wallet or seed phrase. One seed derives a whole tree of
+distinct key pairs, and spending from one address reveals only that
+address's public key, not the others and not the seed. The same backup
+regenerates every address.
 
-## A backup for a post-quantum future
-Transparent addresses rely on elliptic-curve signatures, which a large
-quantum computer could in principle break. The design pairs each address
-with a hash-based backup signature (a Winternitz one-time signature, WOTS),
-built on hash functions believed to resist quantum attack. Zakura says this
-can be used today but has no finished wallet experience yet; signature
-opcodes that would bring post-quantum signing to transparent payments were
-reported as planned for January 2027, with no activation date confirmed.
+## One caution: the extended public key
+An account's extended public key (also present, in effect, inside the
+transparent part of a Unified Full Viewing Key) can derive all of its public
+keys. Sharing it exposes far more than an ordinary spend. Worse, anyone who
+holds it and recovers a single transparent private key can work back to the
+account's root key and every key beneath it. It should be guarded as
+carefully as the keys themselves.
+
+## The lookup leak
+Fresh addresses only help if the wallet can still watch them. A light wallet
+asks a server for each address's history, in effect: "show me A, then B,
+then C." Encryption protects the request in transit, but the server reads
+it, and learns that addresses which look unrelated on-chain all belong to
+one person.
+
+## Private information retrieval
+Private information retrieval (PIR) lets a wallet fetch a record from a
+server's database while hiding which record it fetched. Zakura's design
+splits confirmed transparent activity into block ranges, each served by a
+shard. The wallet works out locally where its addresses' records would sit
+and retrieves them privately; the server never learns which ones.
+To avoid a private lookup in every range, each shard also publishes a small
+public filter (like a Bloom filter): about 15 KB for a range with 10,000
+distinct addresses. The wallet checks its addresses against the filters on
+its own device and makes private lookups only where there may be a match.
+Long histories come back in further private pages.
+
+## Recovery and details
+Restoring a wallet from its seed means finding the history of old
+addresses, including ones now empty because their funds were spent or
+shielded. PIR lets the wallet do that without naming them. Once it knows a
+transaction, it can privately fetch more about it, such as fees and where
+the outputs went, without sending the transaction ID as a readable search.
+
+## Two protections, two risks
+Rotation limits how many public keys are ever exposed, guarding against a
+future key-recovery attack. PIR stops a server from learning which addresses
+belong together, guarding against profiling and targeting. Neither replaces
+the other; together they cover both.
+
+## Where it stands
+Zakura says post-quantum-safe rotating transparent addresses are possible
+today, using a hash-based backup signature (WOTS, a Winternitz one-time
+signature) alongside the usual elliptic-curve key, though there is no
+integrated wallet experience for it yet. Its PIR component was coming to the
+Vizor wallet in October 2026, as an experimental "Private queries" setting.
+Zakura plans post-quantum signature opcodes for Zcash's transparent payments
+in January 2027.
 
 ## How it fits the house's view
-These are welcome improvements for the transparent side, but the advice
-does not change: keep funds shielded and pay shielded to shielded. Private
-Key accepts only ZEC, and a shielded payment remains the way to keep a
-purchase private.
+These are welcome improvements for the transparent side, and a sign of how
+seriously Zcash keeps its security current. The advice does not change: keep
+funds shielded and pay shielded to shielded. Private Key accepts only ZEC,
+and a shielded payment remains the way to keep a purchase private.
