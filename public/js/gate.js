@@ -73,6 +73,10 @@
     T.scrollBottom();
   }
 
+  // A word about the shop, under the letterhead, in the status voice.
+  // Empty to show nothing.
+  const SHOP_NOTICE = 'The shop is currently open.';
+
   // ── Opening: the motto under the crest, as a letterhead ──
   const quote = document.createElement('blockquote');
   quote.className = 'quote';
@@ -87,6 +91,7 @@
   T.scrollBottom();
   await T.pause(500);
   await T.print('He lives well who conceals himself well.', 25, 'translation');
+  if (SHOP_NOTICE) await T.print(SHOP_NOTICE, 15, 'status notice');
   await T.print('Verifying personhood.', 15, 'status');
 
   const cfg = await api('config');
