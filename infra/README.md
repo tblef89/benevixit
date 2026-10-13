@@ -139,6 +139,15 @@ offset or shrunk, set the paper size to 4×6 in the Rollo driver's printing
 preferences. Use the Rollo over USB with its driver alone; the Rollo Ship
 app and account are not needed. (Before the Rollo: PNG on `PAPER_4X6`.)
 
+**Services and box.** FedEx plugin → services: **FedEx Ground** and
+**FedEx Ground Home Delivery** only (Home Delivery is Ground to a
+residence; Hold-at-Location orders go Ground). FedEx's branded boxes are
+for Express services only, so caps ship in our own plain box:
+**8.125 × 8.125 × 8.125 in outside** (about 7.875 inside), **0.39 lb**
+empty, entered under Packaging → box packing, with FedEx's own boxes
+disabled. FedEx bills the larger of real and dimensional weight; this box
+rounds to 8 × 8 × 8 in, about 4 lb on Ground.
+
 A label shows a buyer's name and address: shred misprints rather than
 binning them, and delete downloaded label files once printed (they would
 outlive the purge).
