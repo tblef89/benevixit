@@ -200,6 +200,12 @@ html.bv-night .crest image { filter: url(#bv-emboss-night); }
   color: var(--ink-soft);
   opacity: 0.8;
 }
+/* The shop's state, set under the letterhead's rule, apart from the
+   letter that follows. */
+.line.status.notice {
+  text-align: center;
+  margin-bottom: 1.6rem;
+}
 .line.hint {
   font-size: 0.85rem;
   font-style: italic;
