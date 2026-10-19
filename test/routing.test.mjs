@@ -91,6 +91,7 @@ test('GET /gate/config is handled by the Worker', async () => {
   const j = await res.json();
   assert.equal(j.ok, true);
   assert.equal(typeof j.data.turnstileSiteKey, 'string');
+  assert.equal(j.data.shopNotice, 'The shop is currently open.', 'the default manifest says open');
 });
 
 test('POST /gate/config is answered by the Worker\'s JSON envelope, not the asset layer', async () => {

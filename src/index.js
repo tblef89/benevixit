@@ -15,7 +15,7 @@
  */
 import { GateSession } from './gate/session.js';
 import { verifyTurnstile } from './lib/turnstile.js';
-import { loadManifest } from './lib/manifest.js';
+import { loadManifest, shopNotice } from './lib/manifest.js';
 import { tryPassphrase } from './gate/passphrase.js';
 import { mintSessionToken, verifySessionToken, proxyToken } from './lib/sign.js';
 
@@ -87,6 +87,7 @@ export default {
         return ok({
           turnstileSiteKey: env.TURNSTILE_SITE_KEY,
           debugScores: manifest.debugScores === true,
+          shopNotice: shopNotice(manifest),
         });
       }
       if (request.method !== 'POST') {

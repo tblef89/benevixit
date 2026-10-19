@@ -107,3 +107,12 @@ test('every library lookup logs its outcome and scores, never the query or the p
   assert.deepEqual(logged[0].scores, [0.61]);
   assert.ok(!lines.join('').includes('secret') && !lines.join('').includes('passage text'));
 });
+
+test('the door notice follows shopOpen, and an empty one shows nothing', async () => {
+  const { shopNotice } = await import('../src/lib/manifest.js');
+  const m = { openNotice: 'The shop is currently open.', closedNotice: 'The shop is currently closed.' };
+  assert.equal(shopNotice({ ...m, shopOpen: true }), 'The shop is currently open.');
+  assert.equal(shopNotice({ ...m, shopOpen: false }), 'The shop is currently closed.');
+  assert.equal(shopNotice(m), 'The shop is currently open.', 'missing shopOpen means open');
+  assert.equal(shopNotice({ ...m, shopOpen: false, closedNotice: '' }), '');
+});
