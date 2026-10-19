@@ -73,10 +73,6 @@
     T.scrollBottom();
   }
 
-  // A word about the shop, under the letterhead, in the status voice.
-  // Empty to show nothing.
-  const SHOP_NOTICE = 'The shop is currently open.';
-
   // ── Opening: the motto under the crest, as a letterhead ──
   const quote = document.createElement('blockquote');
   quote.className = 'quote';
@@ -91,10 +87,12 @@
   T.scrollBottom();
   await T.pause(500);
   await T.print('He lives well who conceals himself well.', 25, 'translation');
-  if (SHOP_NOTICE) await T.print(SHOP_NOTICE, 15, 'status notice');
-  await T.print('Verifying personhood.', 15, 'status');
 
+  // The config carries the shop's state (open or closed, set in the KV
+  // manifest), shown under the letterhead before anything else happens.
   const cfg = await api('config');
+  if (cfg.ok && cfg.data?.shopNotice) await T.print(cfg.data.shopNotice, 15, 'status notice');
+  await T.print('Verifying personhood.', 15, 'status');
   if (!cfg.ok || !cfg.data?.turnstileSiteKey) {
     await T.print('The gate is jammed. Try again shortly.', 30);
     return;

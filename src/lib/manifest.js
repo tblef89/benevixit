@@ -39,3 +39,13 @@ export async function loadManifest(env) {
   }
   return { ...DEFAULTS, ...(stored || {}) };
 }
+
+/**
+ * The line under the door's letterhead: "shopOpen": true or false in the
+ * manifest picks openNotice or closedNotice. Flip it in KV to announce an
+ * opening or a closing; no deploy. An empty notice shows nothing.
+ */
+export function shopNotice(manifest) {
+  const text = manifest.shopOpen === false ? manifest.closedNotice : manifest.openNotice;
+  return typeof text === 'string' ? text.trim() : '';
+}
