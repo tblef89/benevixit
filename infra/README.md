@@ -385,31 +385,6 @@ after that. Cloudflare → Zero Trust (free plan) → Access → Applications:
   everything the purge deletes, for as long as they're retained. Either
   turn them off or keep their retention at a week or less.
 
-## 9. Updating PHP
-
-PHP lives inside the WordPress image (`wordpress:6-php8.2-apache`), not on
-the host and not in WordPress: WordPress's own updates never change it.
-Docker's official image is rebuilt when PHP ships a fix, usually within a
-day. To take it:
-
-```bash
-cd /opt/benevixit/infra
-sudo docker compose pull wordpress
-sudo docker compose up -d wordpress
-sudo docker compose exec wordpress php -v     # the patched version
-```
-
-The site's files live in the `wordpress_data` volume, so a new image keeps
-them. The PHP branch (8.2) is in its security-only years, ending
-31 December 2026; move to a newer `php8.x` tag before then.
-
-`php/bv-hardening.ini` is mounted into the container: upload progress off
-(the php2shell exploit, October 2026) and no PHP version banner. The
-Worker also re-encodes file-free multipart posts from the public site as
-ordinary forms and refuses uploads outside `/wp-admin/`
-(`src/lib/multipart.js`), so PHP's multipart parser only ever runs for the
-admin, behind Cloudflare Access.
-
 ## Pricing note
 
 WooCommerce prices in fiat (e.g. USD) and CipherPay converts to ZEC at
