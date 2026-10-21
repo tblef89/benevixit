@@ -204,3 +204,33 @@ test('the FAQ structured data says what the page says, word for word', async () 
     shown,
   );
 });
+
+// php2shell stopgap (src/lib/multipart.js): PHP never parses multipart from
+// the public site.
+test('a multipart form without files reaches the shop as an ordinary form', async () => {
+  const form = new FormData();
+  form.append('add-to-cart', '42');
+  form.append('quantity', '1');
+  const res = await fetch(`${W}/product/herringbone-cap/`, { method: 'POST', body: form, redirect: 'manual' });
+  assert.ok(isStubEcho(res));
+  const echo = await res.json();
+  assert.match(echo.headers['content-type'], /^application\/x-www-form-urlencoded/);
+  assert.equal(echo.body, 'add-to-cart=42&quantity=1');
+});
+
+test('a multipart upload outside /wp-admin/ is refused before PHP', async () => {
+  const form = new FormData();
+  form.append('file', new Blob(['<?php echo 1;'], { type: 'text/plain' }), 'x.php');
+  const res = await fetch(`${W}/checkout/`, { method: 'POST', body: form, redirect: 'manual' });
+  assert.equal(res.status, 415);
+  assert.ok(!isStubEcho(res));
+});
+
+test('multipart to /wp-admin/ (behind Cloudflare Access) is passed through untouched', async () => {
+  const form = new FormData();
+  form.append('name', 'x');
+  const res = await fetch(`${W}/wp-admin/async-upload.php`, { method: 'POST', body: form, redirect: 'manual' });
+  assert.ok(isStubEcho(res));
+  const echo = await res.json();
+  assert.match(echo.headers['content-type'], /^multipart\/form-data/);
+});
