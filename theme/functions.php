@@ -63,6 +63,65 @@ add_action('woocommerce_after_single_product_summary', function () {
     }
 }, 10);
 
+// Never say how many are left. "Out of stock" still shows; "28 in stock"
+// and "Only 2 left" do not.
+add_filter('woocommerce_get_availability_text', function ($text, $product) {
+    return $product->is_in_stock() ? '' : $text;
+}, 10, 2);
+
+// Nor in the quantity box's max= (product page and cart). The cart still
+// refuses more than there is; it just doesn't say the number up front.
+add_filter('woocommerce_quantity_input_args', function ($args, $product) {
+    if ($product instanceof WC_Product && $product->managing_stock() && !$product->is_sold_individually()) {
+        $args['max_value'] = -1;
+    }
+    return $args;
+}, 10, 2);
+
+// Nor when someone asks for more than there is.
+add_filter('woocommerce_cart_product_not_enough_stock_message', function ($message, $product) {
+    return sprintf('There are not enough of &quot;%s&quot; left for that quantity.', $product->get_name());
+}, 10, 2);
+add_filter('woocommerce_cart_product_not_enough_stock_already_in_cart_message', function ($message, $product) {
+    return sprintf('There are not enough of &quot;%s&quot; left to add more to your cart.', $product->get_name());
+}, 10, 2);
+
+// Nor in the public Store API (/wp-json/wc/store/...), which otherwise
+// reports the stock as the add-to-cart maximum and as low_stock_remaining.
+// Report what an untracked product would: 9999 and null.
+add_filter('rest_post_dispatch', function ($response, $server, $request) {
+    if (!$response instanceof WP_REST_Response || strpos($request->get_route(), '/wc/store/') !== 0) {
+        return $response;
+    }
+    // The Store API mixes arrays and stdClass (add_to_cart, quantity_limits).
+    $scrub = function ($node) use (&$scrub) {
+        if ($node instanceof stdClass) {
+            return (object) $scrub((array) $node);
+        }
+        if (!is_array($node)) {
+            return $node;
+        }
+        if (array_key_exists('low_stock_remaining', $node)) {
+            $node['low_stock_remaining'] = null;
+        }
+        if (array_key_exists('sold_individually', $node) && !$node['sold_individually']) {
+            foreach (['add_to_cart', 'quantity_limits'] as $k) {
+                if (is_array($node[$k] ?? null) && isset($node[$k]['maximum'])) {
+                    $node[$k]['maximum'] = 9999;
+                } elseif (is_object($node[$k] ?? null) && isset($node[$k]->maximum)) {
+                    $node[$k]->maximum = 9999;
+                }
+            }
+        }
+        foreach ($node as $k => $v) {
+            $node[$k] = $scrub($v);
+        }
+        return $node;
+    };
+    $response->set_data($scrub($response->get_data()));
+    return $response;
+}, 10, 3);
+
 // Browser chrome tinted to match the paper in both schemes (matches the gate).
 add_action('wp_head', function () {
     echo '<meta name="theme-color" content="#f3ede2" media="(prefers-color-scheme: light)">' . "\n";
