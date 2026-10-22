@@ -116,3 +116,22 @@ test('the door notice follows shopOpen, and an empty one shows nothing', async (
   assert.equal(shopNotice(m), 'The shop is currently open.', 'missing shopOpen means open');
   assert.equal(shopNotice({ ...m, shopOpen: false, closedNotice: '' }), '');
 });
+
+test('out of stock reads as closed; an unknown stock changes nothing; the switch wins', async () => {
+  const { shopNotice } = await import('../src/lib/manifest.js');
+  const m = { openNotice: 'Open.', closedNotice: 'Closed.' };
+  assert.equal(shopNotice(m, true), 'Open.');
+  assert.equal(shopNotice(m, null), 'Open.');
+  assert.equal(shopNotice(m, false), 'Closed.');
+  assert.equal(shopNotice({ ...m, soldOutNotice: 'Sold out.' }, false), 'Sold out.');
+  assert.equal(shopNotice({ ...m, shopOpen: false }, true), 'Closed.');
+});
+
+test('stock is read only from a clean Store API answer', async () => {
+  const { parseInStock } = await import('../src/lib/stock.js');
+  assert.equal(parseInStock([{ is_in_stock: true }]), true);
+  assert.equal(parseInStock([{ is_in_stock: false }]), false);
+  assert.equal(parseInStock([]), null);
+  assert.equal(parseInStock({ is_in_stock: false }), null);
+  assert.equal(parseInStock(null), null);
+});
