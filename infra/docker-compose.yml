@@ -55,7 +55,6 @@ services:
       - wordpress_data:/var/www/html
       - ./mu-plugins:/var/www/html/wp-content/mu-plugins
       - ../theme:/var/www/html/wp-content/themes/benevixit
-      - ./php/bv-hardening.ini:/usr/local/etc/php/conf.d/zz-bv-hardening.ini:ro
     depends_on:
       db:
         condition: service_healthy
