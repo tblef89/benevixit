@@ -142,10 +142,8 @@ async function createSession(body, request, env) {
     if (locked) return err('cooldown', manifest.cooldownMessage, 429);
   }
 
-  // A closed shop starts no conversation, whatever the page does.
-  if (!shopIsOpen(manifest, await shopInStock(env, manifest))) {
-    return err('shop_closed', manifest.awayOpening, 403);
-  }
+  const closed = await closedRefusal(env, manifest);
+  if (closed) return closed;
 
   const human = await verifyTurnstile(env.TURNSTILE_SECRET, body.turnstileToken, ip);
   if (!human) return err('turnstile_failed', 'Could not verify you are a person.', 403);
@@ -157,6 +155,15 @@ async function createSession(body, request, env) {
   const sessionToken = await mintSessionToken(env.GRANT_SECRET, sessionId, manifest.sessionTtlSeconds);
   // The DO is created lazily on first message; the opening line is static config.
   return ok({ sessionId, sessionToken, opening: manifest.opening, maxTurns: manifest.maxTurns });
+}
+
+// A closed shop starts and continues no conversation, whatever the page does:
+// checked at session start and again on every message and passphrase, so a
+// session begun before the close cannot carry on to a grant.
+async function closedRefusal(env, manifest) {
+  manifest = manifest || (await loadManifest(env));
+  if (shopIsOpen(manifest, await shopInStock(env, manifest))) return null;
+  return err('shop_closed', manifest.awayOpening, 403);
 }
 
 // Verify the caller holds a valid session token bound to the claimed id.
@@ -182,6 +189,9 @@ async function relayToSession(body, request, env, path) {
   if (message.length > MAX_MESSAGE_BYTES) {
     return err('too_long', 'Fewer words.', 413);
   }
+
+  const closed = await closedRefusal(env);
+  if (closed) return closed;
 
   const stub = env.GATE_SESSION.get(env.GATE_SESSION.idFromName(sessionId));
   const res = await stub.fetch(new Request(`https://gate-session${path}`, {
@@ -214,6 +224,9 @@ async function passphrase(body, request, env) {
   // sits behind Turnstile + per-IP limits — no unauthenticated brute force.
   const sessionId = await requireSession(body, env);
   if (!sessionId) return err('bad_session', 'Verify yourself at the door first.', 403);
+
+  const closed = await closedRefusal(env);
+  if (closed) return closed;
 
   const result = await tryPassphrase(env, body.phrase);
   if (!result) return err('wrong_word', 'That is not the word.', 403);

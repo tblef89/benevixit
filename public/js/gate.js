@@ -160,6 +160,7 @@
       result = await apiWithPulse('passphrase', { sessionId, sessionToken, phrase: input.slice(6) });
       if (!result.ok) {
         await T.print(result.error.message, 35);
+        if (result.error.code === 'shop_closed') return;
         continue;
       }
       return grantReceived(result.data);
@@ -168,6 +169,7 @@
     result = await apiWithPulse('message', { sessionId, sessionToken, message: input });
     if (!result.ok) {
       await T.print(result.error.message, 35);
+      if (result.error.code === 'shop_closed') return;
       if (result.error.code === 'rate_limited') await T.pause(2000);
       continue;
     }
