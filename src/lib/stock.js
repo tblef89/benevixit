@@ -10,6 +10,7 @@
 import { proxyToken } from './sign.js';
 
 const TTL_SECONDS = 60;
+const FETCH_TIMEOUT_MS = 2000;
 
 export function parseInStock(body) {
   const product = Array.isArray(body) ? body[0] : null;
@@ -27,9 +28,14 @@ export async function shopInStock(env, manifest) {
 
     const url = new URL('/wp-json/wc/store/v1/products', env.SHOP_ORIGIN);
     url.searchParams.set('slug', slug);
+    // The cap is catalog-hidden; the Store API leaves hidden products out
+    // unless asked for every visibility.
+    url.searchParams.set('catalog_visibility', 'any');
     const res = await fetch(url, {
       headers: { 'X-BV-Proxy': await proxyToken(env.GRANT_SECRET), Accept: 'application/json' },
       redirect: 'manual',
+      // A slow shop must not hold up the door: give up and change nothing.
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     const body = await res.json();
