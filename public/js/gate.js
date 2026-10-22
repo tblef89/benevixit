@@ -92,6 +92,12 @@
   // manifest), shown under the letterhead before anything else happens.
   const cfg = await api('config');
   if (cfg.ok && cfg.data?.shopNotice) await T.print(cfg.data.shopNotice, 15, 'status notice');
+  // Closed (switched off or sold out): a greeting, and no conversation.
+  if (cfg.ok && cfg.data?.shopOpen === false) {
+    T.addLine('');
+    await T.print(cfg.data.away || 'The shopkeeper is away.', 35);
+    return;
+  }
   await T.print('Verifying personhood.', 15, 'status');
   if (!cfg.ok || !cfg.data?.turnstileSiteKey) {
     await T.print('The gate is jammed. Try again shortly.', 30);
@@ -154,6 +160,7 @@
       result = await apiWithPulse('passphrase', { sessionId, sessionToken, phrase: input.slice(6) });
       if (!result.ok) {
         await T.print(result.error.message, 35);
+        if (result.error.code === 'shop_closed') return;
         continue;
       }
       return grantReceived(result.data);
@@ -162,6 +169,7 @@
     result = await apiWithPulse('message', { sessionId, sessionToken, message: input });
     if (!result.ok) {
       await T.print(result.error.message, 35);
+      if (result.error.code === 'shop_closed') return;
       if (result.error.code === 'rate_limited') await T.pause(2000);
       continue;
     }

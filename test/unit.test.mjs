@@ -127,6 +127,15 @@ test('out of stock reads as closed; an unknown stock changes nothing; the switch
   assert.equal(shopNotice({ ...m, shopOpen: false }, true), 'Closed.');
 });
 
+test('the keeper converses only while the shop is open', async () => {
+  const { shopIsOpen } = await import('../src/lib/manifest.js');
+  assert.equal(shopIsOpen({}, true), true);
+  assert.equal(shopIsOpen({}, null), true, 'unknown stock never shuts the door');
+  assert.equal(shopIsOpen({}, false), false);
+  assert.equal(shopIsOpen({ shopOpen: false }, true), false);
+  assert.equal(shopIsOpen({ shopOpen: true }, false), false, 'sold out closes even when switched open');
+});
+
 test('stock is read only from a clean Store API answer', async () => {
   const { parseInStock } = await import('../src/lib/stock.js');
   assert.equal(parseInStock([{ is_in_stock: true }]), true);

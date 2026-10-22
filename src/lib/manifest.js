@@ -56,3 +56,12 @@ export function shopNotice(manifest, inStock = null) {
   else text = manifest.openNotice;
   return typeof text === 'string' ? text.trim() : '';
 }
+
+/**
+ * Open unless switched off or sold out. Unknown stock (null) counts as open,
+ * so an outage never shuts the door. While closed the keeper does not
+ * converse: the door greets with awayOpening and starts no session.
+ */
+export function shopIsOpen(manifest, inStock = null) {
+  return manifest.shopOpen !== false && inStock !== false;
+}
