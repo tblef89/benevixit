@@ -15,7 +15,7 @@
  */
 import { GateSession } from './gate/session.js';
 import { verifyTurnstile } from './lib/turnstile.js';
-import { loadManifest, shopNotice } from './lib/manifest.js';
+import { loadManifest, shopNotice, shopIsOpen } from './lib/manifest.js';
 import { shopInStock } from './lib/stock.js';
 import { tryPassphrase } from './gate/passphrase.js';
 import { mintSessionToken, verifySessionToken, proxyToken } from './lib/sign.js';
@@ -85,10 +85,14 @@ export default {
         // debugScores/minTurnsBeforeJudge are echoed so a stale or broken KV
         // manifest edit is diagnosable from a browser. Neither is sensitive.
         const manifest = await loadManifest(env);
+        const inStock = await shopInStock(env, manifest);
+        const open = shopIsOpen(manifest, inStock);
         return ok({
           turnstileSiteKey: env.TURNSTILE_SITE_KEY,
           debugScores: manifest.debugScores === true,
-          shopNotice: shopNotice(manifest, await shopInStock(env, manifest)),
+          shopNotice: shopNotice(manifest, inStock),
+          shopOpen: open,
+          ...(open ? {} : { away: manifest.awayOpening }),
         });
       }
       if (request.method !== 'POST') {
@@ -136,6 +140,11 @@ async function createSession(body, request, env) {
   if (manifest.cooldownSeconds > 0) {
     const locked = await env.GATE_KV.get(await ipLockKey(ip, env));
     if (locked) return err('cooldown', manifest.cooldownMessage, 429);
+  }
+
+  // A closed shop starts no conversation, whatever the page does.
+  if (!shopIsOpen(manifest, await shopInStock(env, manifest))) {
+    return err('shop_closed', manifest.awayOpening, 403);
   }
 
   const human = await verifyTurnstile(env.TURNSTILE_SECRET, body.turnstileToken, ip);
