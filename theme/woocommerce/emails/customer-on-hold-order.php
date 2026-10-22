@@ -18,7 +18,7 @@ defined('ABSPATH') || exit;
 
 do_action('woocommerce_email_header', $email_heading, $email);
 ?>
-<p>Your payment has reached the network and is waiting for confirmation. When it confirms we will write again and begin on your order. There is nothing you need to do.</p>
+<p>We have your order, and your payment has reached the Zcash network. It is waiting to be confirmed, which usually takes a few minutes. When it confirms we will write again and begin on your order. There is nothing you need to do.</p>
 <?php
 do_action('woocommerce_email_order_details', $order, $sent_to_admin, $plain_text, $email);
 do_action('woocommerce_email_order_meta', $order, $sent_to_admin, $plain_text, $email);

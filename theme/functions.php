@@ -73,3 +73,14 @@ add_action('wp_head', function () {
 remove_action('wp_head', 'print_emoji_detection_script', 7);
 remove_action('wp_print_styles', 'print_emoji_styles');
 remove_action('wp_head', 'wp_generator');
+
+// The order-received page: the letters are on their way, and where to look
+// if one goes astray. Mail from a new sender sometimes lands in spam.
+add_filter('woocommerce_thankyou_order_received_text', function ($text, $order) {
+    if (!$order instanceof WC_Order) {
+        return $text;
+    }
+    return 'Thank you. Your order is received. A letter is on its way to '
+        . esc_html($order->get_billing_email())
+        . '; if it has not arrived in a few minutes, look in your spam folder.';
+}, 10, 2);
