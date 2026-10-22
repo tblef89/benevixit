@@ -16,7 +16,6 @@
 import { GateSession } from './gate/session.js';
 import { verifyTurnstile } from './lib/turnstile.js';
 import { loadManifest, shopNotice } from './lib/manifest.js';
-import { neutraliseMultipart } from './lib/multipart.js';
 import { tryPassphrase } from './gate/passphrase.js';
 import { mintSessionToken, verifySessionToken, proxyToken } from './lib/sign.js';
 
@@ -77,9 +76,7 @@ export default {
         const asset = await env.ASSETS.fetch(request);
         if (asset.status !== 404) return asset;
       }
-      const safe = await neutraliseMultipart(request, url);
-      if (safe instanceof Response) return safe;
-      return proxyToShop(safe, env);
+      return proxyToShop(request, env);
     }
 
     try {
