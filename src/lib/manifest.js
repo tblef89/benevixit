@@ -44,8 +44,15 @@ export async function loadManifest(env) {
  * The line under the door's letterhead: "shopOpen": true or false in the
  * manifest picks openNotice or closedNotice. Flip it in KV to announce an
  * opening or a closing; no deploy. An empty notice shows nothing.
+ *
+ * When the product is out of stock (inStock === false, see stock.js) the
+ * shop reads as closed by itself: soldOutNotice if set, else closedNotice.
+ * When stock cannot be read (null), the switch alone decides.
  */
-export function shopNotice(manifest) {
-  const text = manifest.shopOpen === false ? manifest.closedNotice : manifest.openNotice;
+export function shopNotice(manifest, inStock = null) {
+  let text;
+  if (manifest.shopOpen === false) text = manifest.closedNotice;
+  else if (inStock === false) text = manifest.soldOutNotice || manifest.closedNotice;
+  else text = manifest.openNotice;
   return typeof text === 'string' ? text.trim() : '';
 }
