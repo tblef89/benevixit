@@ -32,7 +32,12 @@ services:
       - frontend
 
   wordpress:
-    image: wordpress:6-php8.2-apache
+    # The floating PHP-branch tag, not a WordPress-major one: "6-php8.2-apache"
+    # froze when WordPress 7 shipped (20 May 2026) and never received PHP's
+    # security fixes. WordPress core itself lives in the wordpress_data volume
+    # and updates from the dashboard; the image supplies PHP and Apache.
+    # PHP 8.2 security support ends 31 December 2026.
+    image: wordpress:php8.2-apache
     restart: unless-stopped
     logging: *logging
     env_file: .env
