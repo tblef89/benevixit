@@ -23,7 +23,8 @@ async function timingSafeMatch(a, b) {
 
 export async function tryPassphrase(env, phrase) {
   const manifest = await loadManifest(env);
-  if (!manifest.passphrase) return null;
+  // Unset, or still the example's placeholder: the word path is off.
+  if (!manifest.passphrase || manifest.passphrase === 'REPLACE_ME_ROTATE_ME') return null;
   const match = await timingSafeMatch(normalize(phrase), normalize(manifest.passphrase));
   if (!match) return null;
 

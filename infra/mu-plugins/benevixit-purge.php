@@ -219,7 +219,7 @@ function bv_purge_haystack($value) {
     return $json !== false ? $json : maybe_serialize($value);
 }
 
-// Whole-word, case-insensitive: "Tom" is found in "Tom Lefevre", not in "Custom".
+// Whole-word, case-insensitive: "Ada" is found in "Ada Lovelace", not in "Canada".
 function bv_purge_mentions($haystack, array $needles) {
     if ($haystack === '') {
         return false;

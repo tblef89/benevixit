@@ -7,7 +7,10 @@
  */
 import EXAMPLE from '../../manifest.example.json' with { type: 'json' };
 
-const DEFAULTS = { ...EXAMPLE, passphrase: 'BENEVIXIT' };
+// No default passphrase: the word lives only in KV. Without one there (or
+// with KV unreadable or broken), /word is off rather than falling back to a
+// word anyone reading this repository could type.
+const DEFAULTS = { ...EXAMPLE, passphrase: '' };
 
 /**
  * The stored text as a manifest, or null. Whole-line // comments are allowed
