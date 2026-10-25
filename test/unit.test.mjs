@@ -144,3 +144,11 @@ test('stock is read only from a clean Store API answer', async () => {
   assert.equal(parseInStock({ is_in_stock: false }), null);
   assert.equal(parseInStock(null), null);
 });
+
+test('no passphrase without KV: the public code holds no fallback word', async () => {
+  const { loadManifest } = await import('../src/lib/manifest.js');
+  const missing = await loadManifest({ GATE_KV: { get: async () => null } });
+  assert.equal(missing.passphrase, '');
+  const broken = await loadManifest({ GATE_KV: { get: async () => '{ not json' } });
+  assert.equal(broken.passphrase, '');
+});
