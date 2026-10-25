@@ -8,9 +8,6 @@ transcript, and deterministic Worker code mints an HMAC-signed access grant
 that WordPress verifies before showing the product. Payment is shielded ZEC
 via CipherPay on WooCommerce.
 
-Full architecture and phased plan: `docs/benevixit-rebrand-plan.md` in the
-`tblef89/shisaku` repo.
-
 ## Layout
 
 ```

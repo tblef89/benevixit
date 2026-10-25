@@ -1,7 +1,6 @@
 # Phase 2 — Shop bring-up on the downsized VPS
 
-Prereqs: Phase 1 runbook complete (`docs/mothball-runbook.md`), CipherPay
-merchant credentials in your password manager, `GRANT_SECRET` value at hand.
+Prereqs: CipherPay merchant credentials in your password manager, `GRANT_SECRET` value at hand.
 
 **Same-origin architecture:** visitors never see `shop.benevixit.com`. The
 benevixit.com Worker serves the terminal and gate itself and proxies every
@@ -307,9 +306,8 @@ renewal and the origin lock guards them. Nothing else should be listening
 (NET-1).
 
 **Leftovers (DOC-1, DOC-2, FIL-5).** Containers, volumes and dumps from
-the box's previous life (the shisaku mothball) hold someone's old data.
-Once the offsite copy from `docs/mothball-runbook.md` is confirmed good,
-remove them: `docker rm`, `docker volume rm`, `rm` the archives.
+the box's previous life hold someone's old data. Once an offsite copy is
+confirmed good, remove them: `docker rm`, `docker volume rm`, `rm` the archives.
 
 **Files (FIL-1).** `chmod 600 infra/.env && chown root: infra/.env`.
 
