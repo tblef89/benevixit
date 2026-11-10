@@ -3,7 +3,8 @@
  *
  * Routes:
  *   GET  /gate/config      — public config for the frontend (Turnstile site key)
- *   POST /gate/session     — start a gate conversation (Turnstile-verified)
+ *   GET  /gate/pow         — a proof-of-work challenge, the fallback human check
+ *   POST /gate/session     — start a gate conversation (Turnstile or proof of work)
  *   POST /gate/message     — send a message to the Keeper
  *   POST /gate/passphrase  — try the current passphrase for direct entry
  *
@@ -18,13 +19,14 @@ import { verifyTurnstile } from './lib/turnstile.js';
 import { loadManifest, shopNotice, shopIsOpen } from './lib/manifest.js';
 import { shopInStock } from './lib/stock.js';
 import { tryPassphrase } from './gate/passphrase.js';
-import { mintSessionToken, verifySessionToken, proxyToken } from './lib/sign.js';
+import { mintSessionToken, verifySessionToken, proxyToken, mintPowChallenge, verifyPow } from './lib/sign.js';
+import { GateBudget, budgetResting, redeemPow } from './gate/budget.js';
 
 // Hard ceiling on any incoming message, independent of the KV manifest —
 // rejects abusive payloads at the edge before they reach a Durable Object.
 const MAX_MESSAGE_BYTES = 4000;
 
-export { GateSession };
+export { GateSession, GateBudget };
 
 const ok = (data, status = 200) =>
   Response.json({ ok: true, data }, { status });
@@ -95,6 +97,12 @@ export default {
           ...(open ? {} : { away: manifest.awayOpening }),
         });
       }
+      if (url.pathname === '/gate/pow' && request.method === 'GET') {
+        const manifest = await loadManifest(env);
+        const bits = powBits(manifest);
+        if (!bits) return err('pow_off', 'Only the usual check is open today.', 404);
+        return ok({ challenge: await mintPowChallenge(env.GRANT_SECRET, bits), bits });
+      }
       if (request.method !== 'POST') {
         return err('method_not_allowed', 'POST only.', 405);
       }
@@ -137,7 +145,7 @@ async function createSession(body, request, env) {
   if (!success) return err('rate_limited', 'Too many sessions. Breathe.', 429);
 
   const manifest = await loadManifest(env);
-  if (manifest.cooldownSeconds > 0) {
+  if (manifest.cooldownSeconds > 0 && !isTor(request)) {
     const locked = await env.GATE_KV.get(await ipLockKey(ip, env));
     if (locked) return err('cooldown', manifest.cooldownMessage, 429);
   }
@@ -145,17 +153,39 @@ async function createSession(body, request, env) {
   const closed = await closedRefusal(env, manifest);
   if (closed) return closed;
 
-  const human = await verifyTurnstile(env.TURNSTILE_SECRET, body.turnstileToken, ip);
+  // The human check: Turnstile, or for browsers Turnstile turns away
+  // (Tor, Mullvad, resisted fingerprints), a solved proof-of-work puzzle,
+  // good for one session. Either way the day's turn budget bounds the bill.
+  let human = false;
+  if (body.turnstileToken) {
+    human = await verifyTurnstile(env.TURNSTILE_SECRET, body.turnstileToken, ip);
+  } else if (body.pow && powBits(manifest) > 0) {
+    const solved = await verifyPow(env.GRANT_SECRET, body.pow.challenge, body.pow.nonce, powBits(manifest));
+    human = !!solved && (await redeemPow(env, solved.id, solved.exp));
+  }
   if (!human) return err('turnstile_failed', 'Could not verify you are a person.', 403);
 
-  // Bind conversation access to having passed Turnstile: mint a signed,
+  // Bind conversation access to having passed the human check: mint a signed,
   // short-lived session token. /gate/message and /gate/passphrase require it,
   // so no one can skip the human check by inventing a session id.
   const sessionId = crypto.randomUUID();
   const sessionToken = await mintSessionToken(env.GRANT_SECRET, sessionId, manifest.sessionTtlSeconds);
-  // The DO is created lazily on first message; the opening line is static config.
-  return ok({ sessionId, sessionToken, opening: manifest.opening, maxTurns: manifest.maxTurns });
+  // The DO is created lazily on first message. When today's budget is spent
+  // the keeper rests: the greeting says so, and /word still works.
+  const opening = (await budgetResting(env, manifest)) ? manifest.restingLine : manifest.opening;
+  return ok({ sessionId, sessionToken, opening, maxTurns: manifest.maxTurns });
 }
+
+// Proof-of-work difficulty from the manifest; 0 (or unset) turns the
+// fallback off and leaves Turnstile as the only way in.
+function powBits(manifest) {
+  const b = Number(manifest.powBits);
+  return Number.isInteger(b) && b > 0 && b <= 32 ? b : 0;
+}
+
+// Tor exits are shared by many people and change with every circuit, so a
+// per-address cooldown there punishes strangers and stops no one.
+const isTor = (request) => request.cf?.country === 'T1';
 
 // A closed shop starts and continues no conversation, whatever the page does:
 // checked at session start and again on every message and passphrase, so a
@@ -204,7 +234,7 @@ async function relayToSession(body, request, env, path) {
   const payload = await res.json().catch(() => null);
   if (payload?.data?.exhausted) {
     const manifest = await loadManifest(env);
-    if (manifest.cooldownSeconds > 0) {
+    if (manifest.cooldownSeconds > 0 && !isTor(request)) {
       await env.GATE_KV.put(await ipLockKey(ip, env), '1', {
         expirationTtl: Math.max(60, manifest.cooldownSeconds),
       });

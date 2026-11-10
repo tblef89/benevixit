@@ -16,6 +16,7 @@ src/gate/session.js       GateSession Durable Object (transcript, turn caps, TTL
 src/gate/judge.js         judge call + deterministic verdict threshold
 src/gate/grant.js         HMAC grant mint/verify (WebCrypto)
 src/gate/passphrase.js    rotating word-of-mouth entry
+src/gate/budget.js        GateBudget Durable Object (daily turn budget, spent puzzles)
 src/lib/manifest.js       gate manifest loader (KV, with code defaults)
 src/lib/turnstile.js      Turnstile siteverify
 public/                   terminal frontend (no build step)
@@ -62,6 +63,13 @@ npx wrangler kv key put manifest --binding GATE_KV --path /tmp/m.json --remote
 Same file controls the persona, judge rubric, thresholds, turn caps, models,
 and checkout URL. Future gate editions (partnerships, seasons) are new
 manifests, not new code.
+
+**Spending and privacy browsers.** `dailyTurnBudget` caps the keeper's model
+calls per UTC day (each visitor message is one turn; `0` removes the cap).
+When it is spent, the keeper greets with `restingLine` until tomorrow, and
+`/word` still opens. `powBits` sets the proof-of-work puzzle that replaces
+Turnstile for browsers it turns away (Tor, Mullvad, hardened Firefox): each
+extra bit doubles the work, 17 is a few seconds, `0` turns the fallback off.
 
 ## Security model
 

@@ -40,25 +40,35 @@
   ],
 
   // One Durable Object per gate conversation: transcript, turn count, verdicts.
+  // One more for the whole door: the day's turn budget and spent
+  // proof-of-work challenges (src/gate/budget.js).
   "durable_objects": {
-    "bindings": [{ "name": "GATE_SESSION", "class_name": "GateSession" }]
+    "bindings": [
+      { "name": "GATE_SESSION", "class_name": "GateSession" },
+      { "name": "GATE_BUDGET", "class_name": "GateBudget" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GateSession"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["GateSession"] },
+    { "tag": "v2", "new_sqlite_classes": ["GateBudget"] }
+  ],
 
   // Per-IP rate limits. KV can't do this (eventually consistent, 1 write/sec/key).
+  // Set for one address shared by several people (a VPN or Tor exit): the
+  // daily turn budget, not these, is what bounds the model bill.
   "unsafe": {
     "bindings": [
       {
         "name": "SESSION_RL",
         "type": "ratelimit",
         "namespace_id": "1001",
-        "simple": { "limit": 5, "period": 60 }
+        "simple": { "limit": 10, "period": 60 }
       },
       {
         "name": "MESSAGE_RL",
         "type": "ratelimit",
         "namespace_id": "1002",
-        "simple": { "limit": 30, "period": 60 }
+        "simple": { "limit": 60, "period": 60 }
       }
     ]
   },
