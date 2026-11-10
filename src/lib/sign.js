@@ -77,6 +77,72 @@ export async function verifySessionToken(grantSecret, token, expectedSid) {
   return payload.sid;
 }
 
+// ── Proof of work: the human check for browsers Turnstile turns away ──
+//
+// The Worker hands out a signed challenge; the browser finds a nonce whose
+// SHA-256 over `${challenge}:${nonce}` starts with `bits` zero bits (about
+// 2^bits tries, a few seconds), and /gate/session checks it. No third party,
+// no fingerprinting: it costs compute, not identity. Signed with its own
+// subkey, so a challenge is never a session token or a grant.
+const powKeys = new Map();
+function powKey(grantSecret) {
+  if (!powKeys.has(grantSecret)) {
+    powKeys.set(grantSecret, (async () => {
+      const root = await hmacKey(enc.encode(grantSecret));
+      const sub = await crypto.subtle.sign('HMAC', root, enc.encode('bv-pow-v1'));
+      return hmacKey(new Uint8Array(sub));
+    })());
+  }
+  return powKeys.get(grantSecret);
+}
+
+export function leadingZeroBits(bytes) {
+  let n = 0;
+  for (const b of bytes) {
+    if (b === 0) { n += 8; continue; }
+    return n + Math.clz32(b) - 24;
+  }
+  return n;
+}
+
+export async function mintPowChallenge(grantSecret, bits, ttlSeconds = 300) {
+  const id = b64url(crypto.getRandomValues(new Uint8Array(16)));
+  const payload = { id, bits, exp: Math.floor(Date.now() / 1000) + ttlSeconds };
+  const body = b64url(enc.encode(JSON.stringify(payload)));
+  const sig = b64url(await crypto.subtle.sign('HMAC', await powKey(grantSecret), enc.encode(body)));
+  return `${body}.${sig}`;
+}
+
+// The challenge's { id, exp } if it is ours, unexpired, at least minBits
+// hard, and solved by nonce; null otherwise. Single use is the caller's job.
+export async function verifyPow(grantSecret, challenge, nonce, minBits) {
+  if (typeof challenge !== 'string' || typeof nonce !== 'string') return null;
+  if (!/^\d{1,20}$/.test(nonce) || challenge.length > 512) return null;
+  const dot = challenge.indexOf('.');
+  if (dot < 1) return null;
+  const body = challenge.slice(0, dot);
+  let valid;
+  try {
+    valid = await crypto.subtle.verify(
+      'HMAC', await powKey(grantSecret), b64urlDecode(challenge.slice(dot + 1)), enc.encode(body),
+    );
+  } catch {
+    return null;
+  }
+  if (!valid) return null;
+  let payload;
+  try {
+    payload = JSON.parse(new TextDecoder().decode(b64urlDecode(body)));
+  } catch {
+    return null;
+  }
+  if (!payload || payload.exp < Math.floor(Date.now() / 1000)) return null;
+  if (!(payload.bits >= minBits)) return null;
+  const digest = await crypto.subtle.digest('SHA-256', enc.encode(`${challenge}:${nonce}`));
+  if (leadingZeroBits(new Uint8Array(digest)) < payload.bits) return null;
+  return { id: payload.id, exp: payload.exp };
+}
+
 // Deterministic proxy handshake token: proves an origin request came from the
 // Worker, not a bot hitting shop.benevixit.com directly. Derived from
 // GRANT_SECRET, which the WordPress mu-plugin already shares — no new secret.

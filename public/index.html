@@ -29,7 +29,7 @@
   <style>.bv-covered body>:not(.bv-watermark){visibility:hidden}</style>
   <script>try{var f=JSON.parse(sessionStorage.getItem('bv-dissolving')||'null');if(f&&f.t&&Date.now()-f.t<4000)document.documentElement.classList.add('bv-covered','bv-transit')}catch(e){}</script>
   <script src="/js/dissolve.js" defer></script>
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer onerror="window.bvTurnstileFailed=true"></script>
 </head>
 <body>
   <main id="terminal" aria-live="polite">
@@ -63,6 +63,10 @@
       </svg>
     </div>
     <div id="output"></div>
+    <noscript>
+      <p class="line">“Bene vixit, bene qui latuit.” — He lives well who conceals himself well.</p>
+      <p class="line">The keeper speaks through JavaScript, and it is off in this browser. In Tor Browser, the Standard and Safer security levels both work here; Safest turns it off.</p>
+    </noscript>
     <div id="input-line" style="display:none">
       <span id="input-prefix"></span><span id="input-text"></span><span class="cursor" aria-hidden="true"></span>
     </div>

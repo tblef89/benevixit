@@ -152,3 +152,67 @@ test('no passphrase without KV: the public code holds no fallback word', async (
   const broken = await loadManifest({ GATE_KV: { get: async () => '{ not json' } });
   assert.equal(broken.passphrase, '');
 });
+
+test('proof of work: a solved challenge verifies once-signed, and only when solved', async () => {
+  const { mintPowChallenge, verifyPow, leadingZeroBits } = await import('../src/lib/sign.js');
+  assert.equal(leadingZeroBits(new Uint8Array([0, 0x0f, 0xff])), 12);
+  assert.equal(leadingZeroBits(new Uint8Array([0x80])), 0);
+  assert.equal(leadingZeroBits(new Uint8Array([0, 0])), 16);
+
+  const bits = 8;
+  const challenge = await mintPowChallenge('s3cret', bits);
+  const enc = new TextEncoder();
+  let nonce = 0;
+  for (;; nonce++) {
+    const d = new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(`${challenge}:${nonce}`)));
+    if (leadingZeroBits(d) >= bits) break;
+  }
+  const ok = await verifyPow('s3cret', challenge, String(nonce), bits);
+  assert.ok(ok && typeof ok.id === 'string' && ok.exp > Date.now() / 1000);
+
+  assert.equal(await verifyPow('other', challenge, String(nonce), bits), null, 'wrong key');
+  assert.equal(await verifyPow('s3cret', challenge, String(nonce), bits + 1), null, 'easier than required');
+  assert.equal(await verifyPow('s3cret', challenge, 'abc', bits), null, 'nonce must be digits');
+  let wrong = nonce + 1;
+  for (;; wrong++) {
+    const d = new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(`${challenge}:${wrong}`)));
+    if (leadingZeroBits(d) < bits) break;
+  }
+  assert.equal(await verifyPow('s3cret', challenge, String(wrong), bits), null, 'unsolved');
+});
+
+test('daily budget: counts turns, stops at the limit, resets with the day; puzzles redeem once', async () => {
+  const { GateBudget, budgetExhausted } = await import('../src/gate/budget.js');
+  const store = new Map();
+  let alarm = null;
+  const ctx = { storage: {
+    get: async (k) => store.get(k),
+    put: async (k, v) => { store.set(k, v); },
+    delete: async (k) => store.delete(k),
+    list: async ({ prefix }) => new Map([...store].filter(([k]) => k.startsWith(prefix))),
+    getAlarm: async () => alarm,
+    setAlarm: async (t) => { alarm = t; },
+  } };
+  const b = new GateBudget(ctx, {});
+
+  assert.deepEqual(await b.spend(2), { ok: true, count: 1 });
+  assert.deepEqual(await b.spend(2), { ok: true, count: 2 });
+  assert.deepEqual(await b.spend(2), { ok: false, count: 2 });
+  assert.equal((await b.peek(2)).exhausted, true);
+  assert.equal((await b.peek(0)).exhausted, false, '0 means no cap');
+
+  store.set('turns', { day: '2000-01-01', count: 999 });
+  assert.deepEqual(await b.spend(2), { ok: true, count: 1 }, 'a new day starts at zero');
+
+  assert.equal(budgetExhausted(5, undefined), false);
+  assert.equal(budgetExhausted(5, 5), true);
+
+  const exp = Math.floor(Date.now() / 1000) + 300;
+  assert.deepEqual(await b.redeem('abc', exp), { ok: true });
+  assert.deepEqual(await b.redeem('abc', exp), { ok: false }, 'single use');
+  assert.ok(alarm, 'cleanup alarm armed');
+  store.set('pow:old', 1);
+  await b.alarm();
+  assert.equal(store.has('pow:old'), false, 'expired entries swept');
+  assert.equal(store.has('pow:abc'), true, 'live entries kept');
+});

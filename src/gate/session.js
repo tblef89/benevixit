@@ -13,6 +13,7 @@ import { sanitizeMessage } from '../lib/sanitize.js';
 import { aiText } from '../lib/ai-text.js';
 import { gatewayOptions } from '../lib/gateway.js';
 import { consultLibrary } from './library.js';
+import { spendTurn } from './budget.js';
 
 export class GateSession {
   constructor(ctx, env) {
@@ -50,6 +51,15 @@ export class GateSession {
         passed: false,
         exhausted: true,
       });
+    }
+
+    // Every model call comes out of the door's daily budget. When it is
+    // spent the keeper rests until tomorrow (UTC); /word still opens.
+    if (!(await spendTurn(this.env, manifest))) {
+      return Response.json(
+        { ok: false, error: { code: 'resting', message: manifest.restingLine } },
+        { status: 503 },
+      );
     }
 
     // First activity: arm the purge alarm.

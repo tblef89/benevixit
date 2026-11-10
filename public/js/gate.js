@@ -1,6 +1,7 @@
 /**
  * gate.js — wires the terminal to the Gate Worker.
- * Flow: Turnstile → /gate/session → conversation loop with the Keeper.
+ * Flow: Turnstile (or, where it fails, a proof-of-work puzzle) →
+ * /gate/session → conversation loop with the Keeper.
  * Typing "/word <phrase>" tries the passphrase instead.
  */
 (async function () {
@@ -20,33 +21,85 @@
     }
   }
 
-  function getTurnstileToken(siteKey) {
+  // Turnstile's token, or null if it errors, cannot load (blocked, or a
+  // browser it will not serve) or has not passed within waitMs. Null is not
+  // the end: the caller falls back to proof of work.
+  function getTurnstileToken(siteKey, waitMs) {
     return new Promise((resolve) => {
+      const slot = document.getElementById('turnstile-slot');
       let widgetId = null;
+      let done = false;
+      let wait = null;
+      let giveUp = null;
       // The token is single-use; once we have it the widget has no further
       // purpose. Let its success state show for a beat, then remove it.
-      const dismiss = () => {
+      const finish = (token) => {
+        if (done) return;
+        done = true;
+        clearInterval(wait);
+        clearTimeout(giveUp);
         setTimeout(() => {
           try { if (widgetId !== null) turnstile.remove(widgetId); } catch (e) {}
-          const slot = document.getElementById('turnstile-slot');
           if (slot) slot.style.display = 'none';
-        }, 800);
+        }, token ? 800 : 0);
+        resolve(token || null);
       };
       const render = () => {
-        widgetId = turnstile.render('#turnstile-slot', {
-          sitekey: siteKey,
-          callback: (token) => { resolve(token); dismiss(); },
-          'error-callback': () => resolve(null),
-        });
+        if (widgetId !== null || done) return;
+        try {
+          widgetId = turnstile.render('#turnstile-slot', {
+            sitekey: siteKey,
+            callback: finish,
+            'error-callback': () => finish(null),
+            'unsupported-callback': () => finish(null),
+          });
+        } catch (e) {
+          finish(null);
+        }
       };
-      if (window.turnstile) render();
-      else window.onloadTurnstileCallback = render;
-      // Fallback if the script tag loaded before we set the callback:
-      const wait = setInterval(() => {
-        if (window.turnstile) { clearInterval(wait); render(); }
+      wait = setInterval(() => {
+        if (window.bvTurnstileFailed) finish(null);
+        else if (window.turnstile) { clearInterval(wait); render(); }
       }, 100);
-      setTimeout(() => clearInterval(wait), 15000);
+      giveUp = setTimeout(() => finish(null), waitMs);
     });
+  }
+
+  // Proof of work: find a nonce whose SHA-256 over `${challenge}:${nonce}`
+  // starts with `bits` zero bits. Hashed in batches so the browser's crypto
+  // does the work, not the promise plumbing. A few seconds, on any machine.
+  async function solvePow(challenge, bits) {
+    const enc = new TextEncoder();
+    const zeroBits = (d) => {
+      let n = 0;
+      for (const b of d) {
+        if (b === 0) { n += 8; continue; }
+        return n + Math.clz32(b) - 24;
+      }
+      return n;
+    };
+    const BATCH = 64;
+    for (let n = 0; ; n += BATCH) {
+      const batch = [];
+      for (let i = 0; i < BATCH; i++) {
+        batch.push(crypto.subtle.digest('SHA-256', enc.encode(`${challenge}:${n + i}`)));
+      }
+      const digests = await Promise.all(batch);
+      for (let i = 0; i < BATCH; i++) {
+        if (zeroBits(new Uint8Array(digests[i])) >= bits) return String(n + i);
+      }
+    }
+  }
+
+  // The human check: Turnstile first; for browsers it turns away, a puzzle.
+  async function proveHuman(siteKey) {
+    const token = await getTurnstileToken(siteKey, 20000);
+    if (token) return { turnstileToken: token };
+    const pow = await api('pow');
+    if (!pow.ok) return null;
+    await T.print('Another way, then: a small puzzle for your machine. A few seconds.', 15, 'status');
+    const nonce = await solvePow(pow.data.challenge, pow.data.bits);
+    return { pow: { challenge: pow.data.challenge, nonce } };
   }
 
   async function grantReceived(data) {
@@ -103,13 +156,13 @@
     await T.print('The gate is jammed. Try again shortly.', 30);
     return;
   }
-  const token = await getTurnstileToken(cfg.data.turnstileSiteKey);
-  if (!token) {
+  const human = await proveHuman(cfg.data.turnstileSiteKey);
+  if (!human) {
     await T.print('Verification failed. Reload and try again.', 30);
     return;
   }
 
-  const session = await api('session', { turnstileToken: token });
+  const session = await api('session', human);
   if (!session.ok) {
     await T.print(session.error.message, 30);
     return;
