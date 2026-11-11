@@ -216,3 +216,22 @@ test('daily budget: counts turns, stops at the limit, resets with the day; puzzl
   assert.equal(store.has('pow:old'), false, 'expired entries swept');
   assert.equal(store.has('pow:abc'), true, 'live entries kept');
 });
+
+test('plain http is sent to https on the real hostnames only; https answers carry HSTS', async () => {
+  const worker = (await import('../src/index.js')).default;
+  const env = { ASSETS: { fetch: async () => new Response('page') } };
+
+  const plain = await worker.fetch(new Request('http://benevixit.com/faq?x=1'), env);
+  assert.equal(plain.status, 301);
+  assert.equal(plain.headers.get('Location'), 'https://benevixit.com/faq?x=1');
+  const www = await worker.fetch(new Request('http://www.benevixit.com/'), env);
+  assert.equal(www.headers.get('Location'), 'https://www.benevixit.com/');
+
+  const secure = await worker.fetch(new Request('https://benevixit.com/faq'), env);
+  assert.equal(secure.status, 200);
+  assert.match(secure.headers.get('Strict-Transport-Security'), /^max-age=\d+$/);
+
+  const local = await worker.fetch(new Request('http://127.0.0.1:8787/faq'), env);
+  assert.equal(local.status, 200, 'local dev stays on http');
+  assert.equal(local.headers.get('Strict-Transport-Security'), null);
+});

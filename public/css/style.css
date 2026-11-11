@@ -299,18 +299,31 @@ a.enter:hover { color: var(--accent); }
   .bv-considering { opacity: 0.4; }
 }
 
+/* The field the visitor really types into. It sits in the flow directly
+   under the written line, invisible: a browser scrolls the focused field
+   into view on every keystroke, so where it sits is where the page goes.
+   (Pinned to the top of the window it dragged Android Chrome to the top of
+   the page with each letter.) 16px keeps iOS from zooming on focus. */
 #hidden-input {
-  position: fixed;
-  left: -9999px;
-  top: 0;
+  display: block;
+  width: 100%;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font-size: 16px;
   opacity: 0;
+  pointer-events: none;
 }
 
-#turnstile-slot {
-  position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-}
+/* The human check, when it has to show itself, appears in the letter under
+   "Verifying personhood", clear of the footer. */
+#turnstile-slot { margin: 0.9rem 0; }
+#turnstile-slot:empty { margin: 0; }
 
 a { color: var(--accent); }
 
@@ -331,7 +344,11 @@ a { color: var(--accent); }
   flex-direction: column;
   align-items: center;
   text-align: center;
+  /* Only the links take taps: the bar spans the window, and must not
+     swallow a tap meant for what lies under its empty stretches. */
+  pointer-events: none;
 }
+#site-footer a { pointer-events: auto; }
 #site-footer:hover { opacity: 0.7; }
 #site-footer nav { display: flex; gap: 16px; justify-content: center; }
 #site-footer nav a { color: var(--ink); text-decoration: none; }

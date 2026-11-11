@@ -68,64 +68,84 @@ async function proxyToShop(request, env) {
   return res;
 }
 
+// The real site, as opposed to local dev on loopback.
+const isLive = (url) => /(^|\.)benevixit\.com$/.test(url.hostname);
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (!url.pathname.startsWith('/gate/')) {
-      // Terminal frontend first; anything it doesn't have is the shop.
-      // Assets only answer GET/HEAD — POSTs (login, cart, webhooks) go
-      // straight to WordPress.
-      if (request.method === 'GET' || request.method === 'HEAD') {
-        const asset = await env.ASSETS.fetch(request);
-        if (asset.status !== 404) return asset;
-      }
-      return proxyToShop(request, env);
-    }
-
-    try {
-      if (url.pathname === '/gate/config' && request.method === 'GET') {
-        // debugScores/minTurnsBeforeJudge are echoed so a stale or broken KV
-        // manifest edit is diagnosable from a browser. Neither is sensitive.
-        const manifest = await loadManifest(env);
-        const inStock = await shopInStock(env, manifest);
-        const open = shopIsOpen(manifest, inStock);
-        return ok({
-          turnstileSiteKey: env.TURNSTILE_SITE_KEY,
-          debugScores: manifest.debugScores === true,
-          shopNotice: shopNotice(manifest, inStock),
-          shopOpen: open,
-          ...(open ? {} : { away: manifest.awayOpening }),
-        });
-      }
-      if (url.pathname === '/gate/pow' && request.method === 'GET') {
-        const manifest = await loadManifest(env);
-        const bits = powBits(manifest);
-        if (!bits) return err('pow_off', 'Only the usual check is open today.', 404);
-        return ok({ challenge: await mintPowChallenge(env.GRANT_SECRET, bits), bits });
-      }
-      if (request.method !== 'POST') {
-        return err('method_not_allowed', 'POST only.', 405);
-      }
-
-      const body = await request.json().catch(() => null);
-      if (!body) return err('bad_json', 'Body must be JSON.');
-
-      switch (url.pathname) {
-        case '/gate/session':
-          return createSession(body, request, env);
-        case '/gate/message':
-          return relayToSession(body, request, env, '/message');
-        case '/gate/passphrase':
-          return passphrase(body, request, env);
-        default:
-          return err('not_found', 'No such gate.', 404);
-      }
-    } catch (e) {
-      console.error('gate error', e);
-      return err('internal', 'The gate is jammed. Try again shortly.', 500);
-    }
+    const res = await handle(request, env, url);
+    if (url.protocol !== 'https:' || !isLive(url) || res.status === 101) return res;
+    // HSTS: once a browser has been here over https it never asks in the
+    // clear again, so there is no unencrypted first hop to warn about.
+    const out = new Response(res.body, res);
+    out.headers.set('Strict-Transport-Security', 'max-age=15552000');
+    return out;
   },
 };
+
+async function handle(request, env, url) {
+  // Never serve the shop in the clear. A browser that asks over plain
+  // http (a typed address, an old link) is sent to https, and told to
+  // stay there (HSTS above). Only for the real hostnames: local dev is http.
+  if (url.protocol === 'http:' && isLive(url)) {
+    url.protocol = 'https:';
+    return Response.redirect(url.toString(), 301);
+  }
+  if (!url.pathname.startsWith('/gate/')) {
+    // Terminal frontend first; anything it doesn't have is the shop.
+    // Assets only answer GET/HEAD — POSTs (login, cart, webhooks) go
+    // straight to WordPress.
+    if (request.method === 'GET' || request.method === 'HEAD') {
+      const asset = await env.ASSETS.fetch(request);
+      if (asset.status !== 404) return asset;
+    }
+    return proxyToShop(request, env);
+  }
+
+  try {
+    if (url.pathname === '/gate/config' && request.method === 'GET') {
+      // debugScores/minTurnsBeforeJudge are echoed so a stale or broken KV
+      // manifest edit is diagnosable from a browser. Neither is sensitive.
+      const manifest = await loadManifest(env);
+      const inStock = await shopInStock(env, manifest);
+      const open = shopIsOpen(manifest, inStock);
+      return ok({
+        turnstileSiteKey: env.TURNSTILE_SITE_KEY,
+        debugScores: manifest.debugScores === true,
+        shopNotice: shopNotice(manifest, inStock),
+        shopOpen: open,
+        ...(open ? {} : { away: manifest.awayOpening }),
+      });
+    }
+    if (url.pathname === '/gate/pow' && request.method === 'GET') {
+      const manifest = await loadManifest(env);
+      const bits = powBits(manifest);
+      if (!bits) return err('pow_off', 'Only the usual check is open today.', 404);
+      return ok({ challenge: await mintPowChallenge(env.GRANT_SECRET, bits), bits });
+    }
+    if (request.method !== 'POST') {
+      return err('method_not_allowed', 'POST only.', 405);
+    }
+
+    const body = await request.json().catch(() => null);
+    if (!body) return err('bad_json', 'Body must be JSON.');
+
+    switch (url.pathname) {
+      case '/gate/session':
+        return await createSession(body, request, env);
+      case '/gate/message':
+        return await relayToSession(body, request, env, '/message');
+      case '/gate/passphrase':
+        return await passphrase(body, request, env);
+      default:
+        return err('not_found', 'No such gate.', 404);
+    }
+  } catch (e) {
+    console.error('gate error', e);
+    return err('internal', 'The gate is jammed. Try again shortly.', 500);
+  }
+}
 
 // Rejection cooldown: a hashed-IP marker in KV with a TTL. Deliberately
 // light — a determined visitor can rotate IPs, and that's fine; the point
