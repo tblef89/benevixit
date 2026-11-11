@@ -17,9 +17,18 @@ const Terminal = (() => {
   // factor, so the whole gate slows in step without retuning each call site.
   const PACE = 1.2;
 
-  // Auto-scroll to bottom
+  // Keep the newest writing in view. The page itself scrolls (the terminal
+  // grows with its contents), so this moves the window: just far enough that
+  // the line being written, or the visitor's own line, clears the bottom of
+  // what is actually visible — the visual viewport, which is what shrinks
+  // when a phone's keyboard opens — and the footer.
+  const FOOT_CLEARANCE = 64;
   function scrollBottom() {
-    terminal.scrollTop = terminal.scrollHeight;
+    const el = inputLine.style.display !== 'none' ? inputLine : (output.lastElementChild || output);
+    const vv = window.visualViewport;
+    const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+    const over = el.getBoundingClientRect().bottom + FOOT_CLEARANCE - visibleBottom;
+    if (over > 0) window.scrollBy(0, over);
   }
 
   // Add a completed line to output
@@ -243,16 +252,12 @@ const Terminal = (() => {
     }
   });
 
-  // Mobile keyboard fix: aggressively scroll input into view
+  // Mobile keyboards open late and resize the visible area as they do:
+  // follow the visitor's line down a few times while that settles.
   function scrollInputVisible() {
-    // Multiple attempts to fight browser's default scroll behavior
-    const attempts = [50, 150, 300, 500];
-    attempts.forEach(delay => {
+    [50, 150, 300, 500].forEach(delay => {
       setTimeout(() => {
-        if (inputLine.style.display !== 'none') {
-          inputLine.scrollIntoView({ block: 'center', behavior: 'instant' });
-          terminal.scrollTop = terminal.scrollHeight;
-        }
+        if (inputLine.style.display !== 'none') scrollBottom();
       }, delay);
     });
   }
@@ -260,14 +265,8 @@ const Terminal = (() => {
   hiddenInput.addEventListener('focus', scrollInputVisible);
 
   if (window.visualViewport) {
-    let prevHeight = window.visualViewport.height;
     window.visualViewport.addEventListener('resize', () => {
-      const newHeight = window.visualViewport.height;
-      // Keyboard opened (viewport got smaller)
-      if (newHeight < prevHeight && inputLine.style.display !== 'none') {
-        scrollInputVisible();
-      }
-      prevHeight = newHeight;
+      if (inputLine.style.display !== 'none') scrollInputVisible();
     });
   }
 

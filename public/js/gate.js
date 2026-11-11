@@ -49,6 +49,12 @@
         try {
           widgetId = turnstile.render('#turnstile-slot', {
             sitekey: siteKey,
+            // Nothing to look at unless Turnstile wants a tap; when it
+            // does, bring the box into view, clear of the footer.
+            appearance: 'interaction-only',
+            'before-interactive-callback': () => {
+              try { slot.scrollIntoView({ block: 'center' }); } catch (e) {}
+            },
             callback: finish,
             'error-callback': () => finish(null),
             'unsupported-callback': () => finish(null),
