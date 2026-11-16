@@ -192,8 +192,12 @@ async function createSession(body, request, env) {
   const sessionToken = await mintSessionToken(env.GRANT_SECRET, sessionId, manifest.sessionTtlSeconds);
   // The DO is created lazily on first message. When today's budget is spent
   // the keeper rests: the greeting says so, and /word still works.
-  const opening = (await budgetResting(env, manifest)) ? manifest.restingLine : manifest.opening;
-  return ok({ sessionId, sessionToken, opening, maxTurns: manifest.maxTurns });
+  const resting = await budgetResting(env, manifest);
+  const opening = resting ? manifest.restingLine : manifest.opening;
+  // The line that says a conversation is what is asked; not while resting,
+  // when there is none to be had.
+  const invitation = !resting && typeof manifest.invitation === 'string' ? manifest.invitation.trim() : '';
+  return ok({ sessionId, sessionToken, opening, invitation, maxTurns: manifest.maxTurns });
 }
 
 // Proof-of-work difficulty from the manifest; 0 (or unset) turns the
