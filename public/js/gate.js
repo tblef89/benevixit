@@ -173,11 +173,12 @@
     await T.print(session.error.message, 30);
     return;
   }
-  const { sessionId, sessionToken, opening } = session.data;
+  const { sessionId, sessionToken, opening, invitation } = session.data;
 
   T.addLine('');
   await T.print(opening, 35);
   T.addLine('');
+  if (invitation) T.printInstant(invitation, 'hint');
   T.printInstant('Know the word? Write /word, then the word.', 'hint');
   T.addLine('');
 

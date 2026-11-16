@@ -6,7 +6,7 @@
     <a href="mailto:shopkeeper@benevixit.com">Contact</a>
     <a href="https://x.com/privatekeybrand" target="_blank" rel="me noopener">X</a>
   </nav>
-  <p>&copy; 2026 Certified Compadre LLC</p>
+  <p>&copy; 2026 Private Key Commerce LLC</p>
 </footer>
 <?php wp_footer(); ?>
 </body>
