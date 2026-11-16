@@ -66,7 +66,7 @@ function bv_is_checkout() {
 
 // The visitor's choice, from the posted checkout data (also present in the
 // order-review refresh, where WooCommerce posts the serialized form).
-function bv_delivery_mode(array $posted = null) {
+function bv_delivery_mode(?array $posted = null) {
     if ($posted === null) {
         if (isset($_POST['bv_delivery'])) {
             $posted = ['bv_delivery' => wp_unslash($_POST['bv_delivery'])];
