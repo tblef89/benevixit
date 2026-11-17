@@ -36,8 +36,10 @@ services:
     # froze when WordPress 7 shipped (20 May 2026) and never received PHP's
     # security fixes. WordPress core itself lives in the wordpress_data volume
     # and updates from the dashboard; the image supplies PHP and Apache.
-    # PHP 8.2 security support ends 31 December 2026.
-    image: wordpress:php8.2-apache
+    # PHP 8.4: security fixes until 31 December 2028. To move branches,
+    # change the tag, then `docker compose pull wordpress && docker compose
+    # up -d wordpress`; changing it back the same way undoes it.
+    image: wordpress:php8.4-apache
     restart: unless-stopped
     logging: *logging
     env_file: .env

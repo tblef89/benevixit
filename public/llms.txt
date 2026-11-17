@@ -2,6 +2,12 @@
 
 > Private Key is an independent brand that accepts only Zcash (ZEC). It celebrates freedom, agency and privacy: freedom is not gifted; it is taken with agency. Its shop is bene vixit, at benevixit.com, which makes a small number of well-made goods, beginning with a linen herringbone cap. The name is from Ovid, "bene qui latuit bene vixit" (to live well is to live concealed), later René Descartes's personal motto.
 
+What Private Key believes, in its own words:
+
+> At Private Key, we believe in the pursuit of freedom. It is to be pursued with agency, effort, and clarity of thought. We respect that it rests on a condition of privacy, which itself must be cultivated with intent, lest the freedom not be realized. And we believe that freedom ought be pursued with virtue and a reverence for the responsibility it carries. There is no greater pursuit.
+>
+> We seek to be a symbol of the authentic, for the authentic. We reserve access to our product to those who share and demonstrate these values.
+
 Key facts:
 
 - Payment: ZEC only, the native currency of Zcash, from any Zcash wallet, through CipherPay, a non-custodial Zcash payment processor. No cards, PayPal, bank transfers, Bitcoin or other currencies.

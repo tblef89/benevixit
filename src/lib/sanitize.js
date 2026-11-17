@@ -9,7 +9,7 @@
  * with the code-side score clamp and threshold, the judge cannot be steered
  * into a pass.
  */
-const ROLE_LABEL = /\b(keeper|visitor|system|assistant|user|human|ai)[ \t]*:/gi;
+const ROLE_LABEL = /\b(shopkeeper|keeper|visitor|system|assistant|user|human|ai)[ \t]*:/gi;
 
 export function sanitizeMessage(input) {
   let s = String(input == null ? '' : input);
