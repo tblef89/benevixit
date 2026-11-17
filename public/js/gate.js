@@ -1,7 +1,7 @@
 /**
  * gate.js — wires the terminal to the Gate Worker.
  * Flow: Turnstile (or, where it fails, a proof-of-work puzzle) →
- * /gate/session → conversation loop with the Keeper.
+ * /gate/session → conversation loop with the Shopkeeper.
  * Typing "/word <phrase>" tries the passphrase instead.
  */
 (async function () {
@@ -183,7 +183,7 @@
   T.addLine('');
 
   // Silence looks like death in a terminal, but dots look like a machine.
-  // While the models run, the keeper's mark breathes slowly at the margin —
+  // While the models run, the Shopkeeper's mark breathes slowly at the margin —
   // someone considering, not something loading.
   function thinking() {
     const div = document.createElement('div');
@@ -193,7 +193,7 @@
     mark.setAttribute('aria-hidden', 'true');
     const sr = document.createElement('span');
     sr.className = 'sr-only';
-    sr.textContent = 'The keeper considers.';
+    sr.textContent = 'The Shopkeeper considers.';
     div.appendChild(mark);
     div.appendChild(sr);
     document.getElementById('output').appendChild(div);
