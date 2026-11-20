@@ -387,6 +387,16 @@ html.bv-night .crest image { filter: url(#bv-emboss-night); }
 .woocommerce-message::before,
 .woocommerce-info::before { color: var(--accent) !important; }
 
+/* ── Coupon box (shown only when coupons are switched on in WooCommerce) ── */
+.woocommerce form.checkout_coupon {
+  border: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  padding: 1rem !important;
+  margin: 0 0 1.5rem !important;
+}
+.woocommerce form.checkout_coupon p { margin-bottom: 0.6rem; }
+.woocommerce-info a.showcoupon { color: var(--accent); }
+
 /* ── Checkout headings ── */
 .woocommerce h2, .woocommerce h3, .woocommerce-billing-fields h3, #order_review_heading {
   font-size: 1rem;

@@ -237,8 +237,9 @@ add_filter('woocommerce_checkout_fields', function ($fields) {
 // toggle (the checkbox itself is hidden by the theme).
 add_filter('woocommerce_ship_to_different_address_checked', '__return_true');
 
-// No coupons: nothing to "click here to enter" on the cart or the checkout.
-add_filter('woocommerce_coupons_enabled', '__return_false');
+// Coupons follow WooCommerce's own switch (Settings → General → "Enable the
+// use of coupon codes"): on, the code box shows on the cart and checkout;
+// off, there is nothing to "click here to enter". Nothing is forced here.
 
 // The mode class on <body>, set server-side (HAL by default) so the layout
 // is right before — or without — any script; the checkout script toggles it.
