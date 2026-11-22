@@ -368,7 +368,7 @@ a { color: var(--accent); }
 .page h1 { text-shadow: calc(var(--sun-dx) * 0.7) calc(var(--sun-dy) * 0.7) 0 var(--press-hi); }
 .page h2 { font-size: 0.95rem; margin: 1.5rem 0 0.5rem; color: var(--accent); }
 .page p, .page li { margin-bottom: 0.75rem; color: var(--ink-body); }
-.page ul { padding-left: 1.25rem; }
+.page ul, .page ol { padding-left: 1.25rem; }
 .page .back { display: inline-block; margin-bottom: 2rem; }
 
 /* Night: after nine by the visitor's clock (or by their own preference) the

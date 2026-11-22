@@ -204,3 +204,43 @@ test('the FAQ structured data says what the page says, word for word', async () 
     shown,
   );
 });
+
+test('the guide and the FAQ exist as Markdown: at their own URLs, and by content negotiation', async () => {
+  for (const page of ['/faq', '/spend-zcash']) {
+    const direct = await fetch(`${W}${page}.md`);
+    assert.equal(direct.status, 200);
+    assert.match(direct.headers.get('content-type'), /text\/markdown/);
+    const md = await direct.text();
+    assert.match(md, /^# /);
+
+    const negotiated = await fetch(`${W}${page}`, { headers: { Accept: 'text/markdown' } });
+    assert.equal(negotiated.status, 200);
+    assert.equal(await negotiated.text(), md, 'same words either way');
+
+    const html = await (await fetch(`${W}${page}`)).text();
+    assert.match(html, /<h1>/, 'a browser still gets the page');
+    assert.ok(html.includes(`href="${page}.md"`), 'the page points at its Markdown');
+  }
+});
+
+test('the Markdown says what the pages say', async () => {
+  const text = (s) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+  const mdText = (s) => s.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/\s+/g, ' ').trim();
+  // FAQ: every question and every paragraph of every answer.
+  const faqHtml = await (await fetch(`${W}/faq`)).text();
+  const ld = JSON.parse(faqHtml.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+  const faqMd = mdText(await (await fetch(`${W}/faq.md`)).text());
+  for (const e of ld['@graph'].find((n) => n['@type'] === 'FAQPage').mainEntity) {
+    assert.ok(faqMd.includes(`## ${e.name}`), e.name);
+    for (const line of e.acceptedAnswer.text.split('\n')) {
+      if (line.trim()) assert.ok(faqMd.includes(line.replace(/\s+/g, ' ').trim()), line.slice(0, 60));
+    }
+  }
+  // Guide: every heading, paragraph and list item.
+  const guideHtml = await (await fetch(`${W}/spend-zcash`)).text();
+  const guideMd = mdText(await (await fetch(`${W}/spend-zcash.md`)).text());
+  const main = guideHtml.slice(guideHtml.indexOf('<h1>'), guideHtml.indexOf('</main>'));
+  const blocks = [...main.matchAll(/<(h1|h2|p|li)>([\s\S]*?)<\/\1>/g)].map((m) => text(m[2]));
+  assert.ok(blocks.length > 20);
+  for (const b of blocks) assert.ok(guideMd.includes(b), b.slice(0, 60));
+});

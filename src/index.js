@@ -68,6 +68,28 @@ async function proxyToShop(request, env) {
   return res;
 }
 
+// Pages that also exist as Markdown (public/*.md), the form AI assistants
+// read most reliably. The same words, at their own public URLs (/faq.md);
+// a client that asks for text/markdown at the page's address gets them too.
+// Nothing is shown to a machine that a person cannot open.
+const MARKDOWN_PAGES = new Set(['/faq', '/spend-zcash']);
+function markdownFor(request, url) {
+  if (!MARKDOWN_PAGES.has(url.pathname)) return null;
+  if (!/\btext\/markdown\b/i.test(request.headers.get('Accept') || '')) return null;
+  const md = new URL(url);
+  md.pathname += '.md';
+  return new Request(md, request);
+}
+
+// Which AI crawlers and assistants fetch which public pages: one log line
+// each (Workers Logs), the bot's name and the path, nothing else. These are
+// machines announcing themselves, not visitors; no address is recorded.
+const AI_AGENTS = /GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|Claude-SearchBot|Claude-User|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|GoogleOther|Applebot|Amazonbot|Bytespider|CCBot|meta-externalagent|DuckAssistBot|MistralAI-User|cohere-ai|YouBot|Diffbot/i;
+function noteCrawler(request, url, status) {
+  const m = (request.headers.get('User-Agent') || '').match(AI_AGENTS);
+  if (m) console.log(JSON.stringify({ ev: 'ai-crawler', bot: m[0], path: url.pathname, status }));
+}
+
 // The real site, as opposed to local dev on loopback.
 const isLive = (url) => /(^|\.)benevixit\.com$/.test(url.hostname);
 
@@ -97,8 +119,11 @@ async function handle(request, env, url) {
     // Assets only answer GET/HEAD — POSTs (login, cart, webhooks) go
     // straight to WordPress.
     if (request.method === 'GET' || request.method === 'HEAD') {
-      const asset = await env.ASSETS.fetch(request);
-      if (asset.status !== 404) return asset;
+      const asset = await env.ASSETS.fetch(markdownFor(request, url) || request);
+      if (asset.status !== 404) {
+        noteCrawler(request, url, asset.status);
+        return asset;
+      }
     }
     return proxyToShop(request, env);
   }
