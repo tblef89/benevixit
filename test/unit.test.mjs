@@ -225,7 +225,12 @@ test('plain http is sent to https on the real hostnames only; https answers carr
   assert.equal(plain.status, 301);
   assert.equal(plain.headers.get('Location'), 'https://benevixit.com/faq?x=1');
   const www = await worker.fetch(new Request('http://www.benevixit.com/'), env);
-  assert.equal(www.headers.get('Location'), 'https://www.benevixit.com/');
+  assert.equal(www.headers.get('Location'), 'https://benevixit.com/', 'http and www in one hop');
+  const wwwSecure = await worker.fetch(new Request('https://www.benevixit.com/faq?x=1'), env);
+  assert.equal(wwwSecure.status, 301);
+  assert.equal(wwwSecure.headers.get('Location'), 'https://benevixit.com/faq?x=1');
+  const wwwPost = await worker.fetch(new Request('https://www.benevixit.com/checkout', { method: 'POST', body: 'a=1' }), env);
+  assert.equal(wwwPost.status, 308, 'a POST stays a POST');
 
   const secure = await worker.fetch(new Request('https://benevixit.com/faq'), env);
   assert.equal(secure.status, 200);
