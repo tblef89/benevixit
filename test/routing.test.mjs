@@ -244,3 +244,10 @@ test('the Markdown says what the pages say', async () => {
   assert.ok(blocks.length > 20);
   for (const b of blocks) assert.ok(guideMd.includes(b), b.slice(0, 60));
 });
+
+test('every page names its one canonical address', async () => {
+  for (const [path, canonical] of [['/', '/'], ['/faq', '/faq'], ['/spend-zcash', '/spend-zcash'], ['/terms', '/terms'], ['/privacy', '/privacy']]) {
+    const html = await (await fetch(`${W}${path}`)).text();
+    assert.ok(html.includes(`<link rel="canonical" href="https://benevixit.com${canonical}">`), path);
+  }
+});

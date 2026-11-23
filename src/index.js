@@ -107,12 +107,17 @@ export default {
 };
 
 async function handle(request, env, url) {
-  // Never serve the shop in the clear. A browser that asks over plain
-  // http (a typed address, an old link) is sent to https, and told to
-  // stay there (HSTS above). Only for the real hostnames: local dev is http.
-  if (url.protocol === 'http:' && isLive(url)) {
+  // One address for everything: https://benevixit.com. Plain http (a typed
+  // address, an old link) is never served in the clear, and www is the same
+  // site under a second name, which search engines count as a duplicate.
+  // Both go to the one address in a single hop. 308 for anything but GET
+  // and HEAD, so a redirected POST stays a POST. Only for the real
+  // hostnames: local dev is http on loopback.
+  if (isLive(url) && (url.protocol === 'http:' || url.hostname === 'www.benevixit.com')) {
     url.protocol = 'https:';
-    return Response.redirect(url.toString(), 301);
+    if (url.hostname === 'www.benevixit.com') url.hostname = 'benevixit.com';
+    const get = request.method === 'GET' || request.method === 'HEAD';
+    return Response.redirect(url.toString(), get ? 301 : 308);
   }
   if (!url.pathname.startsWith('/gate/')) {
     // Terminal frontend first; anything it doesn't have is the shop.
